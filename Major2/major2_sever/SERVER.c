@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
 	HOSTNAME = argv[1];
 	LOCAL_PORT = atoi(argv[2]);
 	createSocket();
-	setupProtocols(argv[1]);
+	setupProtocols();
 	bindSocket();
 	pthread_create(&LISTEN_THREAD, NULL, &listenAcceptSocket, NULL);
 	pthread_join(LISTEN_THREAD, NULL);
