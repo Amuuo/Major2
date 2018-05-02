@@ -28,9 +28,9 @@ typedef struct client {
 	char name[20];
 } client;
 
-void  swapNames();
-void* sendMyName();
-void* getClientName();
+void  swapNames(int);
+void* sendMyName(void*);
+void* getClientName(void*);
 void  createSocket();
 void  setupProtocols();
 void  bindSocket();
@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
 	bindSocket();
 	pthread_create(&LISTEN_THREAD, NULL, &listenAcceptSocket, NULL);
 	pthread_join(LISTEN_THREAD, NULL);
-	swapNames();
+	//swapNames();
 	//communicate();
 
 	close(LOCAL_BIND_SOCKET);
@@ -114,24 +114,26 @@ void setupProtocols() {
 
 	return;
 }
-void swapNames() {
-	pthread_create(&GET_NAME, NULL, &getClientName, NULL);
-	pthread_create(&SEND_NAME, NULL, &sendMyName, NULL);
+void swapNames(int sockNum) {
+	pthread_create(&GET_NAME, NULL, &getClientName, (void*)&sockNum);
+	pthread_create(&SEND_NAME, NULL, &sendMyName, (void*)&sockNum);
 	pthread_join(GET_NAME, NULL);
 	pthread_join(SEND_NAME, NULL);
 
 	return;
 }
 
-void* sendMyName() {
-	send(CLIENT_SOCKET[0], SERVER_NAME, sizeof(CLIENT1_NAME), 0);
+void* sendMyName(void* sockNum) {
+	unsigned int nameSize = sizeof(CLIENT[*((int*)sockNum)].name);
+	send(CLIENT[*((int*)sockNum)].sockfd, SERVER_NAME, nameSize, 0);
 
 	return NULL;
 }
-void* getClientName() {
-	memset(CLIENT1_NAME, 0, sizeof(CLIENT1_NAME));
-	recv(CLIENT_SOCKET[0], CLIENT1_NAME, sizeof(CLIENT1_NAME), 0);
-	CLIENT1_NAME[strlen(CLIENT1_NAME)] = '\0';
+void* getClientName(void*sockNum) {
+	unsigned int id = *((int*)sockNum);
+	memset(CLIENT[id].name, 0, sizeof(CLIENT[id].name));
+	recv(CLIENT[id].sockfd, CLIENT[id].name, sizeof(CLIENT[id].name), 0);
+	CLIENT[id].name[strlen(CLIENT[id].name)] = '\0';
 
 	return NULL;
 }
@@ -157,7 +159,8 @@ void* listenAcceptSocket() {
 		printf("\n>> Listening for incoming connections...");
 		SOCKADDR_IN_SIZE = sizeof(struct sockaddr_in);
 
-		if ((CLIENT_SOCKET[NUM_CONNECT_CLIENTS] = accept(LOCAL_BIND_SOCKET, (sockaddr*)&CLIENT_SETTINGS, &SOCKADDR_IN_SIZE)) < 0) {
+		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(LOCAL_BIND_SOCKET, 
+			(sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].client_settings, &SOCKADDR_IN_SIZE)) < 0) {
 			int errorNumber = errno;
 			printf("\nAccept failed with error code: %d", errorNumber);
 			exit(1);
@@ -170,39 +173,41 @@ void* listenAcceptSocket() {
 			printf("\nMore than 2 clients connected. Exiting");
 			int i;
 			for (i = 0; i < 3; ++i) {
-				close(CLIENT_SOCKET[i]);
+				close(CLIENT[i].sockfd);
 			}
 			exit(2);
 		}
-		swapNames();
+		swapNames(NUM_CONNECT_CLIENTS - 1);
 		communicate(NUM_CONNECT_CLIENTS - 1);
 	}
 
 	return NULL;
 }
-void communicate(int socket) {
-	pthread_create(&RECEIVE_THREAD, NULL, &receiving, NULL);
-	pthread_create(&SENDING_THREAD, NULL, &sending, NULL);
+void communicate(int sockNum) {
+	pthread_create(&RECEIVE_THREAD, NULL, &receiving, (void*)&sockNum);
+	pthread_create(&SENDING_THREAD, NULL, &sending, (void*)&sockNum);
 	pthread_join(RECEIVE_THREAD, NULL);
 	pthread_join(SENDING_THREAD, NULL);
 
 	return;
 }
-void* receiving(void* socket) {
-	int bytesReceived;
+void* receiving(void* sockNum) {
+	unsigned int bytesReceived;
+	unsigned int id = *((int*)sockNum);
 	memset(RECEIVE_MESSAGE_BUFF, 0, sizeof(RECEIVE_MESSAGE_BUFF));
-	bytesReceived = recv(*(int*)socket, RECEIVE_MESSAGE_BUFF, MSG_BUFF_LENGTH - 1, 0);
+	bytesReceived = recv(CLIENT[id].sockfd, RECEIVE_MESSAGE_BUFF, MSG_BUFF_LENGTH - 1, 0);
 	RECEIVE_MESSAGE_BUFF[bytesReceived] = '\0';
-	printf("\n\t%s: %s", CLIENT1_NAME, RECEIVE_MESSAGE_BUFF);
+	printf("\n\t%s: %s", CLIENT[id].name, RECEIVE_MESSAGE_BUFF);
 	
 	return NULL;
 }
-void* sending(void* socket) {
+void* sending(void* sockNum) {
 	char* message;
+	unsigned int id = *((int*)sockNum);
 	printf("\n\n%s: ", SERVER_NAME);
 	scanf("%s", message);
 	printf("\n%s: %s", SERVER_NAME, message);
-	send(CLIENT_SOCKET[NUM_CONNECT_CLIENTS-1], message, strlen(message), 0);
+	send(CLIENT[id].sockfd, message, strlen(message), 0);
 	memset(message, 0, sizeof(message));
 	
 	return NULL;
