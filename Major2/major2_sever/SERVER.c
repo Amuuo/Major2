@@ -1,62 +1,70 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<pthread.h>
-#include<string.h>
-#include<sys/types.h>
-#include<sys/socket.h>
-#include<unistd.h>
-#include<arpa/inet.h>
-#include<termio.h>
-#include<netinet/in.h>
-#include<netinet/ip.h>
-#include<netdb.h>
-#include<fcntl.h>
-#include<errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <termio.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <errno.h>
 
+typedef int    SOCKET;
+typedef struct sockaddr_in sockaddr_in;
+typedef struct hostent hostent;
 
 #define MSG_BUFF_LENGTH 32
+#define SERVER_NAME "SERVER"
 
-typedef int SOCKET;
-
-
-void swapNames();
+void  swapNames();
 void* sendMyName();
 void* getClientName();
-void createSocket();
-void setupProtocols(char*);
-void bindSocket();
-void* listenToSocket();
-void acceptSocket();
-void communicate();
+void  createSocket();
+void  setupProtocols(char*);
+void  bindSocket();
+void* listenAcceptSocket();
+void  communicate();
 void* sending();
 void* receiving();
 
-char SEND_MESSAGE_BUFF[MSG_BUFF_LENGTH];
-char RECEIVE_MESSAGE_BUFF[MSG_BUFF_LENGTH];
-char CLIENT_NAME[20];
-const char* SVR_NAME = "Server";
-int  c;
-struct hostent* HOST;
-struct sockaddr_in  SEVER_SETTINGS, CLIENT_SETTINGS;
-SOCKET LOCAL_BIND_SOCKET, CLIENT_SOCKET[2];
-int LOCAL_PORT;
-char* HOSTNAME;
-pthread_t TID[5];
-pthread_t LISTEN_THREAD;
-fd_set SOCKET_SET;
-int NUM_CONNECT_CLIENTS = 0;
+//======================================
+//          GLOBAL VARIABLES
+//======================================
 
+sockaddr_in  SEVER_SETTINGS, CLIENT_SETTINGS;
+pthread_t    TID[5];
+pthread_t    LISTEN_THREAD;
+hostent*     HOST;
+fd_set       SOCKET_SET;
+SOCKET       LOCAL_BIND_SOCKET;
+SOCKET       CLIENT_SOCKET[2];
+char         SEND_MESSAGE_BUFF[MSG_BUFF_LENGTH];
+char         RECEIVE_MESSAGE_BUFF[MSG_BUFF_LENGTH];
+char         CLIENT_NAME[20];
+char*        HOSTNAME;
+int          LOCAL_PORT;
+int          NUM_CONNECT_CLIENTS = 0;
+int          C;
+
+//=================================================================
+//                            M A I N
+//=================================================================
 int main(int argc, char* argv[]) {
 
-	if (argc < 3) {
+	if (argc < 3) 
 		printf("\nUsage: <hostname> <port>...");
-	}
+	
 	HOSTNAME = argv[1];
 	LOCAL_PORT = atoi(argv[2]);
 	createSocket();
 	setupProtocols(argv[1]);
 	bindSocket();
-	create_pthread(&LISTEN_THREAD, NULL, &listenToSocket, NULL);
+	create_pthread(&LISTEN_THREAD, NULL, &listenAcceptSocket, NULL);
 	acceptSocket();
 	swapNames();
 	communicate();
@@ -67,6 +75,9 @@ int main(int argc, char* argv[]) {
 
 	return 0;
 }
+//=================================================================
+
+
 void createSocket() {
 	if ((LOCAL_BIND_SOCKET = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		int err = errno;
@@ -94,7 +105,7 @@ void swapNames() {
 }
 
 void* sendMyName() {
-	send(CLIENT_SOCKET[0], SVR_NAME, sizeof(CLIENT_NAME), 0);
+	send(CLIENT_SOCKET[0], SERVER_NAME, sizeof(CLIENT_NAME), 0);
 	return NULL;
 }
 void* getClientName() {
@@ -115,7 +126,7 @@ void bindSocket() {
 	printf("\n>> Bind Succeeded");
 }
 
-void* listenToSocket() {
+void* listenAcceptSocket() {
 	if ((listen(LOCAL_BIND_SOCKET, 2)) < 0) {
 		int errorNumber = errno;
 		printf("\n>> Listen failed, Error: %d", errorNumber);
@@ -123,18 +134,14 @@ void* listenToSocket() {
 	}
 
 	printf("\n>> Listening for incoming connections...");
-	c = sizeof(struct sockaddr_in);
-	return NULL;
-}
+	C = sizeof(struct sockaddr_in);
 
-void acceptSocket() {
-
-	if ((CLIENT_SOCKET[NUM_CONNECT_CLIENTS] = accept(LOCAL_BIND_SOCKET, (struct sockaddr*)&CLIENT_SETTINGS, &c)) < 0) {
+	if ((CLIENT_SOCKET[NUM_CONNECT_CLIENTS] = accept(LOCAL_BIND_SOCKET, (struct sockaddr*)&CLIENT_SETTINGS, &C)) < 0) {
 		int errorNumber = errno;
 		printf("\nAccept failed with error code: %d", errorNumber);
 		exit(1);
 	} printf("\n>> Connection accepted.\n\n");
-	
+
 	++NUM_CONNECT_CLIENTS;
 
 	// exit if more than 2 clients attempt to connect
@@ -146,6 +153,7 @@ void acceptSocket() {
 		}
 		exit(2);
 	}
+	return NULL;
 }
 
 void communicate() {
@@ -171,9 +179,9 @@ void* sending() {
 	char* message;
 	while (1) {
 		memset(message, 0, sizeof(message));
-		printf("\n\n%s: ", SVR_NAME);
+		printf("\n\n%s: ", SERVER_NAME);
 		scanf("%s", message);
-		printf("\n%s: %s", SVR_NAME, message);
+		printf("\n%s: %s", SERVER_NAME, message);
 		send(CLIENT_SOCKET[0], message, strlen(message), 0);
 	}
 	return NULL;

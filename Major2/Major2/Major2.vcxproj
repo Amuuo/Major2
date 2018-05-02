@@ -27,14 +27,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{148338f1-d6d6-49e6-8487-40fd885e2aa1}</ProjectGuid>
+    <ProjectGuid>{ea5d8e6b-0729-41aa-867d-09726f45d702}</ProjectGuid>
     <Keyword>Linux</Keyword>
-    <RootNamespace>major2_sever</RootNamespace>
+    <RootNamespace>Major2</RootNamespace>
     <MinimumVisualStudioVersion>15.0</MinimumVisualStudioVersion>
     <ApplicationType>Linux</ApplicationType>
     <ApplicationTypeRevision>1.0</ApplicationTypeRevision>
     <TargetLinuxPlatform>Generic</TargetLinuxPlatform>
     <LinuxProjectType>{2238F9CD-F817-4ECC-BD14-2524D2669B35}</LinuxProjectType>
+    <ProjectName>major2_client</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'" Label="Configuration">
@@ -67,21 +68,21 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>$(IncludePath);$(ISenseIncludePath);C:\LinuxLibrary</IncludePath>
-    <RemoteLdToolExe>gcc</RemoteLdToolExe>
     <RemoteCCompileToolExe>gcc</RemoteCCompileToolExe>
+    <RemoteLdToolExe>gcc</RemoteLdToolExe>
   </PropertyGroup>
   <ItemGroup>
-    <ClCompile Include="SERVER.c" />
+    <ClCompile Include="CLIENT.c" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
       <LibraryDependencies>pthread</LibraryDependencies>
     </Link>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Link>
-      <LibraryDependencies>pthread</LibraryDependencies>
-    </Link>
     <ClCompile>
       <Optimization>Disabled</Optimization>
     </ClCompile>
