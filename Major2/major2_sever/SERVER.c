@@ -25,12 +25,11 @@ void* getClientName();
 void createSocket();
 void setupProtocols(char*);
 void bindSocket();
-void listenToSocket();
+void* listenToSocket();
 void acceptSocket();
 void communicate();
 void* sending();
 void* receiving();
-void selectSocket();
 
 char SEND_MESSAGE_BUFF[MSG_BUFF_LENGTH];
 char RECEIVE_MESSAGE_BUFF[MSG_BUFF_LENGTH];
@@ -43,8 +42,9 @@ SOCKET LOCAL_BIND_SOCKET, CLIENT_SOCKET[2];
 int LOCAL_PORT;
 char* HOSTNAME;
 pthread_t TID[5];
+pthread_t LISTEN_THREAD;
 fd_set SOCKET_SET;
-
+int NUM_CONNECT_CLIENTS = 0;
 
 int main(int argc, char* argv[]) {
 
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
 	createSocket();
 	setupProtocols(argv[1]);
 	bindSocket();
-	listenToSocket();
+	create_pthread(&LISTEN_THREAD, NULL, &listenToSocket, NULL);
 	acceptSocket();
 	swapNames();
 	communicate();
@@ -115,7 +115,7 @@ void bindSocket() {
 	printf("\n>> Bind Succeeded");
 }
 
-void listenToSocket() {
+void* listenToSocket() {
 	if ((listen(LOCAL_BIND_SOCKET, 2)) < 0) {
 		int errorNumber = errno;
 		printf("\n>> Listen failed, Error: %d", errorNumber);
@@ -124,14 +124,28 @@ void listenToSocket() {
 
 	printf("\n>> Listening for incoming connections...");
 	c = sizeof(struct sockaddr_in);
+	return NULL;
 }
 
 void acceptSocket() {
-	if ((CLIENT_SOCKET[0] = accept(LOCAL_BIND_SOCKET, (struct sockaddr*)&CLIENT_SETTINGS, &c)) < 0) {
+
+	if ((CLIENT_SOCKET[NUM_CONNECT_CLIENTS] = accept(LOCAL_BIND_SOCKET, (struct sockaddr*)&CLIENT_SETTINGS, &c)) < 0) {
 		int errorNumber = errno;
 		printf("\nAccept failed with error code: %d", errorNumber);
 		exit(1);
 	} printf("\n>> Connection accepted.\n\n");
+	
+	++NUM_CONNECT_CLIENTS;
+
+	// exit if more than 2 clients attempt to connect
+	if (NUM_CONNECT_CLIENTS > 2) {
+		printf("\nMore than 2 clients connected. Exiting");
+		int i;
+		for (i = 0; i < 3; ++i) {
+			close(CLIENT_SOCKET[i]);
+		}
+		exit(2);
+	}
 }
 
 void communicate() {
@@ -152,11 +166,6 @@ void* receiving() {
 	}
 	return NULL;
 }
-
-void selectSocket() {
-	select(2, &SOCKET_SET, NULL, NULL, NULL);
-}
-
 
 void* sending() {
 	char* message;
