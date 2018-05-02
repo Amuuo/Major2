@@ -44,7 +44,6 @@ void* receiving(void*);
 //======================================
 
 sockaddr_in  SEVER_SETTINGS;
-//sockaddr_in  CLIENT_SETTINGS;
 pthread_t    LISTEN_THREAD;
 pthread_t    COMMUNICATE_THREAD;
 pthread_t    RECEIVE_THREAD;
@@ -52,14 +51,10 @@ pthread_t    SENDING_THREAD;
 pthread_t    SEND_NAME;
 pthread_t    GET_NAME;
 hostent*     HOST;
-fd_set       SOCKET_SET;
 SOCKET       LOCAL_BIND_SOCKET;
 client       CLIENT[2];
-//SOCKET       CLIENT_SOCKET[2];
 char         SEND_MESSAGE_BUFF[MSG_BUFF_LENGTH];
 char         RECEIVE_MESSAGE_BUFF[MSG_BUFF_LENGTH];
-//char         CLIENT1_NAME[20];
-//char         CLIENT2_NAME[20];
 char*        HOSTNAME;
 int          LOCAL_PORT;
 int          NUM_CONNECT_CLIENTS = 0;
