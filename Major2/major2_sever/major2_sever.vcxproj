@@ -27,9 +27,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{9bf73ef5-0a52-4c27-b4d9-61c6b336e504}</ProjectGuid>
+    <ProjectGuid>{148338f1-d6d6-49e6-8487-40fd885e2aa1}</ProjectGuid>
     <Keyword>Linux</Keyword>
-    <RootNamespace>major2_svr</RootNamespace>
+    <RootNamespace>major2_sever</RootNamespace>
     <MinimumVisualStudioVersion>15.0</MinimumVisualStudioVersion>
     <ApplicationType>Linux</ApplicationType>
     <ApplicationTypeRevision>1.0</ApplicationTypeRevision>
@@ -60,9 +60,6 @@
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(IncludePath);$(ISenseIncludePath);C:\LinuxLibrary</IncludePath>
-  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="SERVER.c" />
   </ItemGroup>

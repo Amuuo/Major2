@@ -27,14 +27,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{88f6986a-c55c-41b1-bee8-42b9e66b6652}</ProjectGuid>
+    <ProjectGuid>{ea5d8e6b-0729-41aa-867d-09726f45d702}</ProjectGuid>
     <Keyword>Linux</Keyword>
-    <RootNamespace>major2_cli</RootNamespace>
+    <RootNamespace>Major2</RootNamespace>
     <MinimumVisualStudioVersion>15.0</MinimumVisualStudioVersion>
     <ApplicationType>Linux</ApplicationType>
     <ApplicationTypeRevision>1.0</ApplicationTypeRevision>
     <TargetLinuxPlatform>Generic</TargetLinuxPlatform>
     <LinuxProjectType>{2238F9CD-F817-4ECC-BD14-2524D2669B35}</LinuxProjectType>
+    <ProjectName>major2_client</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'" Label="Configuration">
@@ -60,9 +61,6 @@
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(IncludePath);$(ISenseIncludePath);C:\LinuxLibrary</IncludePath>
-  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="CLIENT.c" />
   </ItemGroup>
