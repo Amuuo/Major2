@@ -30,6 +30,7 @@ typedef struct {
 	char name[NAME_SIZE];
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
+	char* hostname;
 	unsigned int port;
 } client;
 
@@ -52,7 +53,6 @@ void  createSocket();
 void  setupProtocols();
 void  bindSocket();
 void* listenAcceptSocket();
-void* sending(void*);
 void* handleClients(void*);
 void  initializeMutexes();
 
@@ -179,6 +179,8 @@ void* listenAcceptSocket() {
 			printf("\nAccept failed with error code: %d", errorNumber);
 			exit(1);
 		} 
+		// get host info from client, to eventually hand of to CLIENT2
+		getpeername(CLIENT[NUM_CONNECT_CLIENTS].sockfd, (sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, sizeof(sockaddr));
 		++NUM_CONNECT_CLIENTS;
 		sockNum = NUM_CONNECT_CLIENTS - 1;
 
@@ -197,19 +199,10 @@ void* listenAcceptSocket() {
 			exit(2);
 		}
 		pthread_create(&RECEIVE_THREAD[sockNum], NULL, &handleClients, (void*)&sockNum);
-		pthread_create(&SENDING_THREAD[sockNum], NULL, &sending, (void*)&sockNum);
-		//communicate(NUM_CONNECT_CLIENTS - 1);
 	}
 
 	return NULL;
 }
-/*void communicate(int sockNum) {
-
-	pthread_join(RECEIVE_THREAD, NULL);
-	pthread_join(SENDING_THREAD, NULL);
-
-	return;
-}*/
 void* handleClients(void* sockNum) {
 	unsigned int bytesReceived;
 	unsigned int id = *((int*)sockNum);
@@ -218,7 +211,6 @@ void* handleClients(void* sockNum) {
 		pthread_mutex_lock(&RECEIVE_MUTEX);
 		printf("\nReceiving TID: %ld", RECEIVE_THREAD[id]);
 		memset(MAIN_SERVER.receive_msg_buff, 0, sizeof(MAIN_SERVER.receive_msg_buff));
-		//clearStdin();
 		printf("\nWaiting for public key from first client...");
 		bytesReceived = recv(CLIENT[id].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
 		printf("\nMessage received: %s", MAIN_SERVER.receive_msg_buff);
@@ -258,30 +250,6 @@ void* handleClients(void* sockNum) {
 	}
 	return NULL;
 }
-/*
-void* sending(void* sockNum) {
-	char* message;
-	unsigned int id = *((int*)sockNum);
-	
-	while (1) {
-		pthread_mutex_lock(&SENDING_MUTEX);
-		message = (char*)malloc(MSG_BUFF_LENGTH);
-		printf("\nSending TID: %ld", SENDING_THREAD[id]);
-		printf("\n\n%s: ", SERVER_NAME);
-		fgets(message, MSG_BUFF_LENGTH, stdin);
-		if (message != NULL) {
-			send(CLIENT[id].sockfd, message, strlen(message), 0);
-		}
-		if (message == '0') {
-			--NUM_CONNECT_CLIENTS;
-		}
-		free(message);
-		pthread_mutex_lock(&SENDING_MUTEX);
-	}
-	
-	return NULL;
-}
-*/
 void initializeMutexes() {
 	pthread_mutex_init(&RECEIVE_MUTEX, NULL);
 	pthread_mutex_init(&SENDING_MUTEX, NULL);
