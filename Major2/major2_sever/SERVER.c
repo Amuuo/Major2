@@ -52,7 +52,6 @@ void* listenAcceptSocket();
 //void  communicate(int);
 void* sending(void*);
 void* receiving(void*);
-void  clearStdin();
 void  initializeMutexes();
 
 //======================================
@@ -268,17 +267,10 @@ void* sending(void* sockNum) {
 			--NUM_CONNECT_CLIENTS;
 		}
 		free(message);
-		clearStdin();
 		pthread_mutex_lock(&SENDING_MUTEX);
 	}
 	
 	return NULL;
-}
-void clearStdin() {
-	int tmp;
-	do {
-		tmp = getchar();
-	} while (tmp != EOF && tmp != '\n');
 }
 
 void initializeMutexes() {
