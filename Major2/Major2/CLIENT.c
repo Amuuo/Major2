@@ -18,33 +18,22 @@ typedef int SOCKET;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct hostent hostent;
 
-/*
-typedef struct streams {
-	FILE* RECEIVE_OUT_STREAM;
-	FILE* RECEIVE_IN_STREAM;
-	FILE* SENDING_OUT_STREAM;
-	FILE* SENDING_IN_STREAM;
-} Streams;
-*/
-
-typedef struct client {
+typedef struct {
 	SOCKET sockfd;
 	sockaddr_in protocols;
 	char name[20];
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
 	unsigned int port;
-	//Streams filestreams;
 } Client;
 
-typedef struct server {
+typedef struct {
 	SOCKET sockfd;
 	sockaddr_in protocols;
 	char name[20];
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
 	unsigned int port;
-	//Streams filestreams;
 } Server;
 
 void* receiving();
@@ -182,7 +171,6 @@ void* sending() {
 			send(MAIN_SERVER.sockfd, CLIENT.send_msg_buff, MSG_BUFF_LENGTH, 0);
 		}
 		memset(message, 0, sizeof(message));
-		clearStdin();
 	}
 
 	return NULL;
@@ -206,27 +194,3 @@ void* receiving() {
 
 	return NULL;
 }
-
-void clearStdin() {
-	int tmp;
-	do {
-		tmp = getchar();
-	} while (tmp != EOF && tmp != '\n');
-}
-
-/*
-void initializeFileStreams(void* tmpObj, char id) {
-	if (id == 'C' || id == 'c') {
-		((Client*)tmpObj)->filestreams.RECEIVE_OUT_STREAM = fopen(strcat(((Client*)tmpObj)->name, "RECEIVE_OUT_STREAM"), "a+");
-		((Client*)tmpObj)->filestreams.RECEIVE_IN_STREAM  = fopen(strcat(((Client*)tmpObj)->name, "RECEIVE_IN_STREAM"), "a+");
-		((Client*)tmpObj)->filestreams.SENDING_OUT_STREAM = fopen(strcat(((Client*)tmpObj)->name, "SENDING_OUT_STREAM"), "a+");
-		((Client*)tmpObj)->filestreams.SENDING_IN_STREAM  = fopen(strcat(((Client*)tmpObj)->name, "SENDING_IN_STREAM"), "a+");
-	}
-	else if (id == 'S' || id == 'S') {
-		((Server*)tmpObj)->filestreams.RECEIVE_OUT_STREAM = fopen(strcat(((Server*)tmpObj)->name, "RECEIVE_OUT_STREAM"), "a+");
-		((Server*)tmpObj)->filestreams.RECEIVE_IN_STREAM  = fopen(strcat(((Server*)tmpObj)->name, "RECEIVE_IN_STREAM"), "a+");
-		((Server*)tmpObj)->filestreams.SENDING_OUT_STREAM = fopen(strcat(((Server*)tmpObj)->name, "SENDING_OUT_STREAM"), "a+");
-		((Server*)tmpObj)->filestreams.SENDING_IN_STREAM  = fopen(strcat(((Server*)tmpObj)->name, "SENDING_IN_STREAM"), "a+");
-	}
-}
-*/

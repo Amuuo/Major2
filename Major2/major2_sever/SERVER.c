@@ -13,6 +13,7 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <math.h>
 
 typedef int    SOCKET;
 typedef struct sockaddr_in sockaddr_in;
@@ -224,6 +225,25 @@ void* receiving(void* sockNum) {
 
 			/*generate public key (n,d), store in MAIN_SERVER.n, and MAIN_SERVER.d*/
 
+		}
+		else {
+			char* msg = "\nINVALID";
+			send(CLIENT[id].sockfd, msg, strlen(msg), 0);
+			continue;
+		}
+		// generate private key and send to CLIENT1
+		if (NUM_CONNECT_CLIENTS == 2) {
+			char* private_key;
+			/* generate private key and send to CLIENT2 as string in the 
+			  format "KEY n e" */
+			send(CLIENT[abs(id - 1)].sockfd, private_key, strlen(private_key), 0);
+		}
+		// if there's not 2 clients connected, signal client to disconnect
+		else {
+			char* msg = '0';
+			send(CLIENT[id].sockfd, msg, strlen(msg), 0);
+			--NUM_CONNECT_CLIENTS;
+			return NULL;
 		}
 		MAIN_SERVER.receive_msg_buff[bytesReceived] = '\0';
 		printf("\n%s: %s", CLIENT[id].name, MAIN_SERVER.receive_msg_buff);
