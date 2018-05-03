@@ -40,6 +40,9 @@ typedef struct server {
 	char  send_msg_buff[MSG_BUFF_LENGTH];
 	char  receive_msg_buff[MSG_BUFF_LENGTH];
 	unsigned int port;
+	int n;
+	int d;
+	int e;
 } server;
 
 void*  swapNames(void*);
@@ -49,7 +52,6 @@ void  createSocket();
 void  setupProtocols();
 void  bindSocket();
 void* listenAcceptSocket();
-//void  communicate(int);
 void* sending(void*);
 void* receiving(void*);
 void  initializeMutexes();
@@ -222,7 +224,9 @@ void* receiving(void* sockNum) {
 		printf("\nMessage received: %s", MAIN_SERVER.receive_msg_buff);
 		if (/*Recieved prime numbers 'p' and 'q' are valid*/ 1) {
 
-			/*generate public key (n,d), store in MAIN_SERVER.n, and MAIN_SERVER.d*/
+			/********************************************************************
+			 generate public key (n,d), store in MAIN_SERVER.n, and MAIN_SERVER.d
+			 *********************************************************************/
 
 		}
 		else {
@@ -233,8 +237,12 @@ void* receiving(void* sockNum) {
 		// generate private key and send to CLIENT1
 		if (NUM_CONNECT_CLIENTS == 2) {
 			char* private_key;
-			/* generate private key and send to CLIENT2 as string in the 
-			  format "KEY n e" */
+
+			/*********************************************************
+			 generate private key and send to CLIENT2 as string in the 
+			  format "KEY n e" 
+			 *********************************************************/
+			
 			send(CLIENT[abs(id - 1)].sockfd, private_key, strlen(private_key), 0);
 		}
 		// if there's not 2 clients connected, signal client to disconnect
