@@ -24,7 +24,7 @@ typedef struct {
 	char name[20];
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
-	unsigned int port;
+	unsigned int port;	
 } Client;
 
 typedef struct {
@@ -36,7 +36,7 @@ typedef struct {
 	unsigned int port;
 } Server;
 
-void* handleClients();
+void* receiving();
 void* sending();
 void* sendMyName();
 void* getFriendName();
@@ -46,8 +46,6 @@ void  setupProtocols(char*);
 void  connectSocket();
 void  communicate();
 void  setupAsSever();
-void  clearStdin();
-//void  initializeFileStreams(void*, char);
 
 //======================================
 //          GLOBAL VARIABLES
@@ -61,12 +59,11 @@ pthread_t       GET_NAME_THREAD;
 pthread_mutex_t MUTEX;
 Client          CLIENT;
 Server          MAIN_SERVER;
-/*
-FILE*           RECEIVE_OUT_STREAM;
-FILE*           RECEIVE_IN_STREAM;
-FILE*           SENDING_OUT_STREAM;
-FILE*           SENDING_IN_STREAM;
-*/
+unsigned int    P;
+unsigned int    Q;
+unsigned int    E;
+unsigned int    N;
+
 //=================================================================
 //                            M A I N
 //=================================================================
@@ -79,7 +76,6 @@ int main(int argc, char* argv[]) {
 	}
 	MAIN_SERVER.port = atoi(argv[2]);
 	strcpy(CLIENT.name, argv[3]);
-	initializeFileStreams(&CLIENT, "C");
 
 	createSocket();
 	setupProtocols(argv[1]);
@@ -147,14 +143,10 @@ void connectSocket() {
 	return;
 }
 void communicate() {
-	pthread_create(&RECEIVE_THREAD, NULL, &handleClients, NULL);
+	pthread_create(&RECEIVE_THREAD, NULL, &receiving, NULL);
 	pthread_create(&SENDING_THREAD, NULL, &sending, NULL);
 	pthread_join(RECEIVE_THREAD, NULL);
 	pthread_join(SENDING_THREAD, NULL);
-
-	return;
-}
-void setupAsSever() {
 
 	return;
 }
@@ -175,7 +167,7 @@ void* sending() {
 
 	return NULL;
 }
-void* handleClients() {
+void* receiving() {
 	int bytesReceived;
 	
 	while (1) {
@@ -193,4 +185,8 @@ void* handleClients() {
 	}
 
 	return NULL;
+}
+void setupAsSever() {
+
+	return;
 }
