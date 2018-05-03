@@ -54,10 +54,10 @@ void  setupAsSever();
 hostent*      HOST;
 pthread_t     RECEIVE_THREAD;
 pthread_t     SENDING_THREAD;
-pthread_t     SEND_NAME;
-pthread_t     GET_NAME;
+pthread_t     SEND_NAME_THREAD;
+pthread_t     GET_NAME_THREAD;
 client        CLIENT;
-server        MAIN_SEVER;
+server        MAIN_SERVER;
 
 //=================================================================
 //                            M A I N
@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
 		printf("\nUsage: <server hostname> <server port#> <client name>");
 		exit(1);
 	}
-	MAIN_SEVER.port = atoi(argv[2]);
+	MAIN_SERVER.port = atoi(argv[2]);
 	strcpy(CLIENT.name, argv[3]);
 
 	createSocket();
@@ -77,38 +77,34 @@ int main(int argc, char* argv[]) {
 	swapNames();
 	communicate();
 
-	close(SERVER_SOCKET);
+	close(MAIN_SERVER.sockfd);
 
 	return 0;
 }
 //=================================================================
 
 void swapNames() {
-	pthread_create(&SEND_NAME, NULL, &sendMyName, NULL);
-	pthread_create(&GET_NAME, NULL, &getFriendName, NULL);
-	pthread_join(SEND_NAME, NULL);
-	pthread_join(GET_NAME, NULL);
+	pthread_create(&SEND_NAME_THREAD, NULL, &sendMyName, NULL);
+	pthread_create(&GET_NAME_THREAD, NULL, &getFriendName, NULL);
+	pthread_join(SEND_NAME_THREAD, NULL);
+	pthread_join(GET_NAME_THREAD, NULL);
 
 	return;
 }
-
 void* sendMyName() {
-	send(MAIN_SEVER.sockfd, CLIENT.name, sizeof(MAIN_SEVER.name), 0);
+	send(MAIN_SERVER.sockfd, CLIENT.name, sizeof(MAIN_SERVER.name), 0);
 
 	return NULL;
 }
-
-
 void* getFriendName() {
-	memset(&MAIN_SEVER.name[0], 0, sizeof(MAIN_SEVER.name));
-	recv(MAIN_SEVER.sockfd, MAIN_SEVER.name, sizeof(MAIN_SEVER.name), 0);
-	MAIN_SEVER.name[strlen(MAIN_SEVER.name)] = '\0';
+	memset(&MAIN_SERVER.name[0], 0, sizeof(MAIN_SERVER.name));
+	recv(MAIN_SERVER.sockfd, MAIN_SERVER.name, sizeof(MAIN_SERVER.name), 0);
+	MAIN_SERVER.name[strlen(MAIN_SERVER.name)] = '\0';
 
 	return NULL;
 }
-
 void createSocket() {
-	if ((MAIN_SEVER.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+	if ((MAIN_SERVER.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		printf("\n>> Count not create socket : \n");
 		exit(1);
 	} 
@@ -119,18 +115,17 @@ void createSocket() {
 void setupProtocols(char* arg1) {
 	memset(&HOST, 0, sizeof(HOST));
 	HOST = gethostbyname(arg1);
-	memset(&MAIN_SEVER.protocols, 0, sizeof(MAIN_SEVER.protocols));
-	bcopy((char*)HOST->h_addr_list[0], (char*)&MAIN_SEVER.protocols.sin_addr.s_addr, HOST->h_length);
-	MAIN_SEVER.protocols.sin_family = AF_INET;
-	MAIN_SEVER.protocols.sin_port = htons(MAIN_SEVER.port);
+	memset(&MAIN_SERVER.protocols, 0, sizeof(MAIN_SERVER.protocols));
+	bcopy((char*)HOST->h_addr_list[0], (char*)&MAIN_SERVER.protocols.sin_addr.s_addr, HOST->h_length);
+	MAIN_SERVER.protocols.sin_family = AF_INET;
+	MAIN_SERVER.protocols.sin_port = htons(MAIN_SERVER.port);
 	printf("\n>> Protocols created.");
 
 	return;
 }
-
 void connectSocket() {
 	int check, tmp;
-	check = connect(MAIN_SEVER.sockfd, (struct sockaddr*)&MAIN_SEVER.protocols, sizeof(MAIN_SEVER.protocols));
+	check = connect(MAIN_SERVER.sockfd, (struct sockaddr*)&MAIN_SERVER.protocols, sizeof(MAIN_SERVER.protocols));
 	if (check < 0) {
 		tmp = errno;
 		printf("\n>> check = %d", check);
@@ -141,7 +136,6 @@ void connectSocket() {
 
 	return;
 }
-
 void communicate() {
 	pthread_create(&RECEIVE_THREAD, NULL, &receiving, NULL);
 	pthread_create(&SENDING_THREAD, NULL, &sending, NULL);
@@ -150,12 +144,10 @@ void communicate() {
 
 	return;
 }
-
 void setupAsSever() {
 
 	return;
 }
-
 void* sending() {
 	char* message;
 	
@@ -165,22 +157,21 @@ void* sending() {
 		scanf("%s", message);
 		printf("\n\n%s: %s", CLIENT.name, message);
 		if (sizeof(message) > 0) {
-			send(MAIN_SEVER.sockfd, message, strlen(message), 0);
+			send(MAIN_SERVER.sockfd, message, strlen(message), 0);
 		}
 	}
 
 	return NULL;
 }
-
 void* receiving() {
 	int bytesReceived;
 	
 	while (1) {
 		memset(CLIENT.receive_msg_buff, 0, sizeof(CLIENT.receive_msg_buff));
 
-		if ((bytesReceived = recv(MAIN_SEVER.sockfd, CLIENT.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0)) > 0) {
+		if ((bytesReceived = recv(MAIN_SERVER.sockfd, CLIENT.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0)) > 0) {
 			CLIENT.receive_msg_buff[bytesReceived] = '\0';
-			printf("\n\t%s: %s", MAIN_SEVER.name, CLIENT.receive_msg_buff);
+			printf("\n%s: %s", MAIN_SERVER.name, CLIENT.receive_msg_buff);
 		}
 		if (CLIENT.receive_msg_buff == '0') {
 			printf("\nReceived '0' from server, closing socket");

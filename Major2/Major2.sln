@@ -4,9 +4,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 15.0.27428.2037
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "major2_client", "Major2\Major2.vcxproj", "{EA5D8E6B-0729-41AA-867D-09726F45D702}"
-	ProjectSection(ProjectDependencies) = postProject
-		{148338F1-D6D6-49E6-8487-40FD885E2AA1} = {148338F1-D6D6-49E6-8487-40FD885E2AA1}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "major2_sever", "major2_sever\major2_sever.vcxproj", "{148338F1-D6D6-49E6-8487-40FD885E2AA1}"
 EndProject
