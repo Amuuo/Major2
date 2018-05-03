@@ -35,8 +35,8 @@ typedef struct server {
 	SOCKET sockfd;
 	sockaddr_in protocols;
 	char* name;
-	char send_msg_buff[MSG_BUFF_LENGTH];
-	char receive_msg_buff[MSG_BUFF_LENGTH];
+	char  send_msg_buff[MSG_BUFF_LENGTH];
+	char  receive_msg_buff[MSG_BUFF_LENGTH];
 	unsigned int port;
 } server;
 
@@ -64,7 +64,7 @@ pthread_t    GET_NAME_THREAD;
 pthread_t    SWAP_THREAD;
 hostent*     HOST;
 client       CLIENT[2];
-server       SERVER;
+server       MAIN_SERVER;
 char*        HOSTNAME;
 int          NUM_CONNECT_CLIENTS = 0;
 int          SOCKADDR_IN_SIZE;
@@ -78,8 +78,8 @@ int main(int argc, char* argv[]) {
 		printf("\nUsage: <hostname> <port>...");
 	
 	HOSTNAME = argv[1];
-	SERVER.port = atoi(argv[2]);
-	SERVER.name = "SERVER";
+	MAIN_SERVER.port = atoi(argv[2]);
+	MAIN_SERVER.name = SERVER_NAME;
 	createSocket();
 	setupProtocols();
 	bindSocket();
@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
 	//swapNames();
 	//communicate();
 
-	close(SERVER.sockfd);
+	close(MAIN_SERVER.sockfd);
 	close(CLIENT[0].sockfd);
 	close(CLIENT[1].sockfd);
 
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
 //=================================================================
 
 void createSocket() {
-	if ((SERVER.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+	if ((MAIN_SERVER.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		int err = errno;
 		printf("\nCount not create socket : %d", err);
 		exit(1);
@@ -110,11 +110,11 @@ void createSocket() {
 void setupProtocols() {
 	memset(&HOST, 0, sizeof(HOST));
 	HOST = gethostbyname(HOSTNAME);
-	memset(&SERVER.protocols, 0, sizeof(SERVER.protocols));
-	bcopy((char*)HOST->h_addr_list[0], (char*)&SERVER.protocols.sin_addr.s_addr, HOST->h_length);
-	SERVER.protocols.sin_addr.s_addr = htonl(INADDR_ANY);
-	SERVER.protocols.sin_family = AF_INET;
-	SERVER.protocols.sin_port = htons(SERVER.port);
+	memset(&MAIN_SERVER.protocols, 0, sizeof(MAIN_SERVER.protocols));
+	bcopy((char*)HOST->h_addr_list[0], (char*)&MAIN_SERVER.protocols.sin_addr.s_addr, HOST->h_length);
+	MAIN_SERVER.protocols.sin_addr.s_addr = htonl(INADDR_ANY);
+	MAIN_SERVER.protocols.sin_family = AF_INET;
+	MAIN_SERVER.protocols.sin_port = htons(MAIN_SERVER.port);
 	printf("\n>> Protocols created.");
 
 	return;
@@ -130,9 +130,9 @@ void* swapNames(void* sockNum) {
 
 void* sendMyName(void* sockNum) {
 	unsigned int id = *((int*)sockNum);
-	unsigned int nameSize = sizeof(*SERVER[id].name);
+	unsigned int nameSize = sizeof(MAIN_SERVER.name);
 
-	send(CLIENT[id].sockfd, SERVER_NAME, nameSize, 0);
+	send(CLIENT[id].sockfd, MAIN_SERVER.name, nameSize, 0);
 
 	return NULL;
 }
@@ -145,7 +145,7 @@ void* getClientName(void*sockNum) {
 	return NULL;
 }
 void bindSocket() {
-	if ((bind(SERVER.sockfd, (sockaddr*)&SERVER.protocols, sizeof(SERVER.protocols))) < 0) {
+	if ((bind(MAIN_SERVER.sockfd, (sockaddr*)&MAIN_SERVER.protocols, sizeof(MAIN_SERVER.protocols))) < 0) {
 		int errorNumber = errno;
 		printf("\nBind failed with error code: %d", errorNumber);
 		exit(1);
@@ -158,7 +158,7 @@ void* listenAcceptSocket() {
 	unsigned int sockNum;
 	while (NUM_CONNECT_CLIENTS < 3) {
 
-		if ((listen(SERVER.sockfd, 2)) < 0) {
+		if ((listen(MAIN_SERVER.sockfd, 2)) < 0) {
 			int errorNumber = errno;
 			printf("\n>> Listen failed, Error: %d", errorNumber);
 			exit(1);
@@ -167,7 +167,7 @@ void* listenAcceptSocket() {
 		printf("\n>> Listening for incoming connections...");
 		SOCKADDR_IN_SIZE = sizeof(struct sockaddr_in);
 
-		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(SERVER.sockfd, 
+		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, 
 			(sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {
 			int errorNumber = errno;
 			printf("\nAccept failed with error code: %d", errorNumber);
@@ -206,10 +206,10 @@ void* receiving(void* sockNum) {
 	unsigned int id = *((int*)sockNum);
 	
 	while (1) {
-		memset(SERVER.receive_msg_buff, 0, sizeof(SERVER.receive_msg_buff));
-		bytesReceived = recv(CLIENT[id].sockfd, SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
-		SERVER.receive_msg_buff[bytesReceived] = '\0';
-		printf("\n%s: %s", CLIENT[id].name, SERVER.receive_msg_buff);
+		memset(MAIN_SERVER.receive_msg_buff, 0, sizeof(MAIN_SERVER.receive_msg_buff));
+		bytesReceived = recv(CLIENT[id].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
+		MAIN_SERVER.receive_msg_buff[bytesReceived] = '\0';
+		printf("\n%s: %s", CLIENT[id].name, MAIN_SERVER.receive_msg_buff);
 	}
 	return NULL;
 }
