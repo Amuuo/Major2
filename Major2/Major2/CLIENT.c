@@ -152,15 +152,35 @@ void communicate() {
 }
 void* sending() {
 	char* message;
-	
+	int bytesReceived;
+	char c;
 	while (1) {
 		printf("\nSending TID: %ld", SENDING_THREAD);
-		printf("\n\n%s, enter public key (p q): ", CLIENT.name);
+		printf("\n\n%s, enter prime numbers key (p q): ", CLIENT.name);
 		//scanf("%s", message);
 		fgets(CLIENT.send_msg_buff, MSG_BUFF_LENGTH, stdin);
 		
 		if (sizeof(message) > 0) {
 			send(MAIN_SERVER.sockfd, CLIENT.send_msg_buff, MSG_BUFF_LENGTH, 0);
+		}
+		if (bytesReceived = (recv(MAIN_SERVER.sockfd, CLIENT.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0)) < 0) {
+			int errorNum = errno;
+			printf("\nError on receive: %d", errorNum);
+			exit(2);
+		}
+		CLIENT.receive_msg_buff[bytesReceived] = '\0';
+
+		FILE* server_msg = fopen("server_msg", "a+");
+		while ((c = fgetc(server_msg)) != EOF) {
+			fputc(c, server_msg);
+		}
+		if (CLIENT.receive_msg_buff == "0") {
+			printf("\nReceived '0' from Main Server, disconnecting...");
+			close (MAIN_SERVER.sockfd);
+			exit(3);
+		}
+		else if () {
+
 		}
 		memset(message, 0, sizeof(message));
 	}
