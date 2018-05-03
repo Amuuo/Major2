@@ -36,7 +36,7 @@ typedef struct {
 	unsigned int port;
 } Server;
 
-void* receiving();
+void* handleClients();
 void* sending();
 void* sendMyName();
 void* getFriendName();
@@ -147,7 +147,7 @@ void connectSocket() {
 	return;
 }
 void communicate() {
-	pthread_create(&RECEIVE_THREAD, NULL, &receiving, NULL);
+	pthread_create(&RECEIVE_THREAD, NULL, &handleClients, NULL);
 	pthread_create(&SENDING_THREAD, NULL, &sending, NULL);
 	pthread_join(RECEIVE_THREAD, NULL);
 	pthread_join(SENDING_THREAD, NULL);
@@ -175,7 +175,7 @@ void* sending() {
 
 	return NULL;
 }
-void* receiving() {
+void* handleClients() {
 	int bytesReceived;
 	
 	while (1) {

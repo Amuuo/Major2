@@ -24,7 +24,7 @@ typedef struct sockaddr sockaddr;
 #define NAME_SIZE 10
 #define SERVER_NAME "SERVER"
 
-typedef struct client {
+typedef struct {
 	SOCKET sockfd;
 	sockaddr_in protocols;
 	char name[NAME_SIZE];
@@ -33,16 +33,16 @@ typedef struct client {
 	unsigned int port;
 } client;
 
-typedef struct server {
+typedef struct {
 	SOCKET sockfd;
 	sockaddr_in protocols;
 	char name[NAME_SIZE];
-	char  send_msg_buff[MSG_BUFF_LENGTH];
-	char  receive_msg_buff[MSG_BUFF_LENGTH];
+	char send_msg_buff[MSG_BUFF_LENGTH];
+	char receive_msg_buff[MSG_BUFF_LENGTH];
 	unsigned int port;
-	int n;
-	int d;
-	int e;
+	unsigned int n;
+	unsigned int d;
+	unsigned int e;
 } server;
 
 void*  swapNames(void*);
@@ -53,7 +53,7 @@ void  setupProtocols();
 void  bindSocket();
 void* listenAcceptSocket();
 void* sending(void*);
-void* receiving(void*);
+void* handleClients(void*);
 void  initializeMutexes();
 
 //======================================
@@ -196,7 +196,7 @@ void* listenAcceptSocket() {
 			}
 			exit(2);
 		}
-		pthread_create(&RECEIVE_THREAD[sockNum], NULL, &receiving, (void*)&sockNum);
+		pthread_create(&RECEIVE_THREAD[sockNum], NULL, &handleClients, (void*)&sockNum);
 		pthread_create(&SENDING_THREAD[sockNum], NULL, &sending, (void*)&sockNum);
 		//communicate(NUM_CONNECT_CLIENTS - 1);
 	}
@@ -210,7 +210,7 @@ void* listenAcceptSocket() {
 
 	return;
 }*/
-void* receiving(void* sockNum) {
+void* handleClients(void* sockNum) {
 	unsigned int bytesReceived;
 	unsigned int id = *((int*)sockNum);
 	
@@ -245,7 +245,7 @@ void* receiving(void* sockNum) {
 			
 			send(CLIENT[abs(id - 1)].sockfd, private_key, strlen(private_key), 0);
 		}
-		// if there's not 2 clients connected, signal client to disconnect
+		// if there's not 2 clients connected, signal client to disconnect with '0'
 		else {
 			char* msg = '0';
 			send(CLIENT[id].sockfd, msg, strlen(msg), 0);
@@ -258,6 +258,7 @@ void* receiving(void* sockNum) {
 	}
 	return NULL;
 }
+/*
 void* sending(void* sockNum) {
 	char* message;
 	unsigned int id = *((int*)sockNum);
@@ -280,7 +281,7 @@ void* sending(void* sockNum) {
 	
 	return NULL;
 }
-
+*/
 void initializeMutexes() {
 	pthread_mutex_init(&RECEIVE_MUTEX, NULL);
 	pthread_mutex_init(&SENDING_MUTEX, NULL);
