@@ -71,6 +71,16 @@
     <RemoteCCompileToolExe>gcc</RemoteCCompileToolExe>
     <RemoteLdToolExe>gcc</RemoteLdToolExe>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
+    <IncludePath>$(IncludePath);$(ISenseIncludePath):C:\LinuxLibrary</IncludePath>
+    <RemoteCCompileToolExe>gcc</RemoteCCompileToolExe>
+    <RemoteLdToolExe>gcc</RemoteLdToolExe>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
+    <IncludePath>$(IncludePath);$(ISenseIncludePath):C:\LinuxLibrary</IncludePath>
+    <RemoteCCompileToolExe>gcc</RemoteCCompileToolExe>
+    <RemoteLdToolExe>gcc</RemoteLdToolExe>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="CLIENT.c" />
   </ItemGroup>
@@ -86,6 +96,19 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
     </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <Link>
+      <LibraryDependencies>pthread</LibraryDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
+    <Link>
+      <LibraryDependencies>pthread</LibraryDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

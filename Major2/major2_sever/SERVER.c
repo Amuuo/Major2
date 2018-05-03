@@ -20,12 +20,13 @@ typedef struct hostent hostent;
 typedef struct sockaddr sockaddr;
 
 #define MSG_BUFF_LENGTH 128
+#define NAME_SIZE 10
 #define SERVER_NAME "SERVER"
 
 typedef struct client {
 	SOCKET sockfd;
 	sockaddr_in protocols;
-	char name[20];
+	char name[NAME_SIZE];
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
 	unsigned int port;
@@ -34,7 +35,7 @@ typedef struct client {
 typedef struct server {
 	SOCKET sockfd;
 	sockaddr_in protocols;
-	char* name;
+	char name[NAME_SIZE];
 	char  send_msg_buff[MSG_BUFF_LENGTH];
 	char  receive_msg_buff[MSG_BUFF_LENGTH];
 	unsigned int port;
@@ -50,6 +51,7 @@ void* listenAcceptSocket();
 //void  communicate(int);
 void* sending(void*);
 void* receiving(void*);
+void  clearStdin();
 
 //======================================
 //          GLOBAL VARIABLES
@@ -79,7 +81,7 @@ int main(int argc, char* argv[]) {
 	
 	HOSTNAME = argv[1];
 	MAIN_SERVER.port = atoi(argv[2]);
-	MAIN_SERVER.name = SERVER_NAME;
+	*MAIN_SERVER.name = SERVER_NAME;
 	createSocket();
 	setupProtocols();
 	bindSocket();
@@ -120,8 +122,8 @@ void setupProtocols() {
 	return;
 }
 void* swapNames(void* sockNum) {
-	pthread_create(&GET_NAME_THREAD, NULL, &getClientName, &sockNum);
-	pthread_create(&SEND_NAME_THREAD, NULL, &sendMyName, &sockNum);
+	pthread_create(&GET_NAME_THREAD, NULL, &getClientName, sockNum);
+	pthread_create(&SEND_NAME_THREAD, NULL, &sendMyName, sockNum);
 	pthread_join(GET_NAME_THREAD, NULL);
 	pthread_join(SEND_NAME_THREAD, NULL);
 
@@ -136,10 +138,9 @@ void* sendMyName(void* sockNum) {
 
 	return NULL;
 }
-void* getClientName(void*sockNum) {
-	unsigned int id = *((int*)sockNum);
-	memset(CLIENT[id].name, 0, sizeof(CLIENT[id].name));
-	recv(CLIENT[id].sockfd, CLIENT[id].name, sizeof(CLIENT[id].name), 0);
+void* getClientName(void* sockNum) {
+	unsigned int id = *((int*)sockNum);	
+	recv(CLIENT[id].sockfd, CLIENT[id].name, NAME_SIZE, 0);
 	CLIENT[id].name[strlen(CLIENT[id].name)] = '\0';
 
 	return NULL;
@@ -156,7 +157,7 @@ void bindSocket() {
 }
 void* listenAcceptSocket() {
 	unsigned int sockNum;
-	while (NUM_CONNECT_CLIENTS < 3) {
+	while (NUM_CONNECT_CLIENTS < 2) {
 
 		if ((listen(MAIN_SERVER.sockfd, 2)) < 0) {
 			int errorNumber = errno;
@@ -172,9 +173,14 @@ void* listenAcceptSocket() {
 			int errorNumber = errno;
 			printf("\nAccept failed with error code: %d", errorNumber);
 			exit(1);
-		} printf("\n>> Connection accepted.\n\n");
-
+		} 
 		++NUM_CONNECT_CLIENTS;
+		sockNum = NUM_CONNECT_CLIENTS - 1;
+
+		pthread_create(&SWAP_THREAD, NULL, &swapNames, (void*)&sockNum);
+		pthread_join(SWAP_THREAD, NULL);
+		printf("\n>> Connection accepted.\n\n");
+
 
 		// exit if more than 2 clients attempt to connect
 		if (NUM_CONNECT_CLIENTS > 2) {
@@ -185,10 +191,8 @@ void* listenAcceptSocket() {
 			}
 			exit(2);
 		}
-		sockNum = NUM_CONNECT_CLIENTS - 1;
 		pthread_create(&RECEIVE_THREAD[sockNum], NULL, &receiving, (void*)&sockNum);
 		pthread_create(&SENDING_THREAD[sockNum], NULL, &sending, (void*)&sockNum);
-		pthread_create(&SWAP_THREAD, NULL, &swapNames, (void*)&sockNum);
 		//communicate(NUM_CONNECT_CLIENTS - 1);
 	}
 
@@ -206,7 +210,9 @@ void* receiving(void* sockNum) {
 	unsigned int id = *((int*)sockNum);
 	
 	while (1) {
+		printf("\nReceiving TID: %ld", RECEIVE_THREAD[id]);
 		memset(MAIN_SERVER.receive_msg_buff, 0, sizeof(MAIN_SERVER.receive_msg_buff));
+		//clearStdin();
 		bytesReceived = recv(CLIENT[id].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
 		MAIN_SERVER.receive_msg_buff[bytesReceived] = '\0';
 		printf("\n%s: %s", CLIENT[id].name, MAIN_SERVER.receive_msg_buff);
@@ -218,17 +224,28 @@ void* sending(void* sockNum) {
 	unsigned int id = *((int*)sockNum);
 	
 	while (1) {
+		message = (char*)malloc(MSG_BUFF_LENGTH);
+		printf("\nSending TID: %ld", SENDING_THREAD[id]);
 		printf("\n\n%s: ", SERVER_NAME);
-		scanf("%s", message);
-		printf("\n%s: %s", SERVER_NAME, message);
-		send(CLIENT[id].sockfd, message, strlen(message), 0);
+		fgets(message, MSG_BUFF_LENGTH, stdin);
+		if (message != NULL) {
+			send(CLIENT[id].sockfd, message, strlen(message), 0);
+		}
 		if (message == '0') {
 			--NUM_CONNECT_CLIENTS;
 		}
-		memset(message, 0, sizeof(*message));
+		free(message);
+		//memset(message, 0, sizeof(message));
+		clearStdin();
 	}
 	
 	return NULL;
+}
+void clearStdin() {
+	int tmp;
+	do {
+		tmp = getchar();
+	} while (tmp != EOF && tmp != '\n');
 }
 
 

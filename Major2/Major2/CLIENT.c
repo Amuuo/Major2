@@ -46,24 +46,27 @@ void  setupProtocols(char*);
 void  connectSocket();
 void  communicate();
 void  setupAsSever();
+void  clearStdin();
 
 //======================================
 //          GLOBAL VARIABLES
 //======================================
 
-hostent*      HOST;
-pthread_t     RECEIVE_THREAD;
-pthread_t     SENDING_THREAD;
-pthread_t     SEND_NAME_THREAD;
-pthread_t     GET_NAME_THREAD;
-client        CLIENT;
-server        MAIN_SERVER;
+hostent*        HOST;
+pthread_t       RECEIVE_THREAD;
+pthread_t       SENDING_THREAD;
+pthread_t       SEND_NAME_THREAD;
+pthread_t       GET_NAME_THREAD;
+pthread_mutex_t MUTEX;
+client          CLIENT;
+server          MAIN_SERVER;
 
 //=================================================================
 //                            M A I N
 //=================================================================
 int main(int argc, char* argv[]) {
 
+	pthread_mutex_init(&MUTEX, NULL);
 	if (argc < 4) {
 		printf("\nUsage: <server hostname> <server port#> <client name>");
 		exit(1);
@@ -152,13 +155,14 @@ void* sending() {
 	char* message;
 	
 	while (1) {
-		memset(message, 0, sizeof(message));
+		printf("\nSending TID: %ld", SENDING_THREAD);
 		printf("\n\n%s: ", CLIENT.name);
 		scanf("%s", message);
-		printf("\n\n%s: %s", CLIENT.name, message);
 		if (sizeof(message) > 0) {
 			send(MAIN_SERVER.sockfd, message, strlen(message), 0);
 		}
+		memset(message, 0, sizeof(message));
+		clearStdin();
 	}
 
 	return NULL;
@@ -167,6 +171,7 @@ void* receiving() {
 	int bytesReceived;
 	
 	while (1) {
+		printf("\nReceive TID: %ld", RECEIVE_THREAD);
 		memset(CLIENT.receive_msg_buff, 0, sizeof(CLIENT.receive_msg_buff));
 
 		if ((bytesReceived = recv(MAIN_SERVER.sockfd, CLIENT.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0)) > 0) {
@@ -180,4 +185,11 @@ void* receiving() {
 	}
 
 	return NULL;
+}
+
+void clearStdin() {
+	int tmp;
+	do {
+		tmp = getchar();
+	} while (tmp != EOF && tmp != '\n');
 }
