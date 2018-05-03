@@ -13,10 +13,28 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#define MSG_BUFF_LENGTH 32
+#define MSG_BUFF_LENGTH 128
 typedef int SOCKET;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct hostent hostent;
+
+typedef struct client {
+	SOCKET sockfd;
+	sockaddr_in protocols;
+	char name[20];
+	char send_msg_buff[MSG_BUFF_LENGTH];
+	char receive_msg_buff[MSG_BUFF_LENGTH];
+	unsigned int port;
+} client;
+
+typedef struct server {
+	SOCKET sockfd;
+	sockaddr_in protocols;
+	char name[20];
+	char send_msg_buff[MSG_BUFF_LENGTH];
+	char receive_msg_buff[MSG_BUFF_LENGTH];
+	unsigned int port;
+} server;
 
 void* receiving();
 void* sending();
@@ -33,20 +51,13 @@ void  setupAsSever();
 //          GLOBAL VARIABLES
 //======================================
 
-sockaddr_in  SERVER;
-hostent*     HOST;
-pthread_t    RECEIVE_THREAD;
-pthread_t    SENDING_THREAD;
-pthread_t    SEND_NAME;
-pthread_t    GET_NAME;
-SOCKET       SERVER_SOCKET;
-char*        CLIENT1_NAME;
-char         SERVER_NAME[20];
-char         SEND_MESSAGE_BUFFER[MSG_BUFF_LENGTH];
-char         RECEIVE_MESSAGE_BUFFER[MSG_BUFF_LENGTH];
-int          SERVER_PORT;
-int          NEW_CLIENT_PORT;
-
+hostent*      HOST;
+pthread_t     RECEIVE_THREAD;
+pthread_t     SENDING_THREAD;
+pthread_t     SEND_NAME;
+pthread_t     GET_NAME;
+client        CLIENT;
+server        MAIN_SEVER;
 
 //=================================================================
 //                            M A I N
@@ -57,8 +68,8 @@ int main(int argc, char* argv[]) {
 		printf("\nUsage: <server hostname> <server port#> <client name>");
 		exit(1);
 	}
-	SERVER_PORT = atoi(argv[2]);
-	CLIENT1_NAME = argv[3];
+	MAIN_SEVER.port = atoi(argv[2]);
+	strcpy(CLIENT.name, argv[3]);
 
 	createSocket();
 	setupProtocols(argv[1]);
@@ -82,22 +93,22 @@ void swapNames() {
 }
 
 void* sendMyName() {
-	send(SERVER_SOCKET, CLIENT1_NAME, sizeof(SERVER_NAME), 0);
+	send(MAIN_SEVER.sockfd, CLIENT.name, sizeof(MAIN_SEVER.name), 0);
 
 	return NULL;
 }
 
 
 void* getFriendName() {
-	memset(&SERVER_NAME[0], 0, sizeof(SERVER_NAME));
-	recv(SERVER_SOCKET, SERVER_NAME, sizeof(SERVER_NAME), 0);
-	SERVER_NAME[strlen(SERVER_NAME)] = '\0';
+	memset(&MAIN_SEVER.name[0], 0, sizeof(MAIN_SEVER.name));
+	recv(MAIN_SEVER.sockfd, MAIN_SEVER.name, sizeof(MAIN_SEVER.name), 0);
+	MAIN_SEVER.name[strlen(MAIN_SEVER.name)] = '\0';
 
 	return NULL;
 }
 
 void createSocket() {
-	if ((SERVER_SOCKET = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+	if ((MAIN_SEVER.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		printf("\n>> Count not create socket : \n");
 		exit(1);
 	} 
@@ -108,10 +119,10 @@ void createSocket() {
 void setupProtocols(char* arg1) {
 	memset(&HOST, 0, sizeof(HOST));
 	HOST = gethostbyname(arg1);
-	memset(&SERVER, 0, sizeof(SERVER));
-	bcopy((char*)HOST->h_addr_list[0], (char*)&SERVER.sin_addr.s_addr, HOST->h_length);
-	SERVER.sin_family = AF_INET;
-	SERVER.sin_port = htons(SERVER_PORT);
+	memset(&MAIN_SEVER.protocols, 0, sizeof(MAIN_SEVER.protocols));
+	bcopy((char*)HOST->h_addr_list[0], (char*)&MAIN_SEVER.protocols.sin_addr.s_addr, HOST->h_length);
+	MAIN_SEVER.protocols.sin_family = AF_INET;
+	MAIN_SEVER.protocols.sin_port = htons(MAIN_SEVER.port);
 	printf("\n>> Protocols created.");
 
 	return;
@@ -119,7 +130,7 @@ void setupProtocols(char* arg1) {
 
 void connectSocket() {
 	int check, tmp;
-	check = connect(SERVER_SOCKET, (struct sockaddr*)&SERVER, sizeof(SERVER));
+	check = connect(MAIN_SEVER.sockfd, (struct sockaddr*)&MAIN_SEVER.protocols, sizeof(MAIN_SEVER.protocols));
 	if (check < 0) {
 		tmp = errno;
 		printf("\n>> check = %d", check);
@@ -147,21 +158,35 @@ void setupAsSever() {
 
 void* sending() {
 	char* message;
-	memset(message, 0, sizeof(message));
-	printf("\n\n%s: ", CLIENT1_NAME);
-	scanf("%s", message);
-	printf("\n\n%s: %s", CLIENT1_NAME, message);
-	send(SERVER_SOCKET, message, strlen(message), 0);
+	
+	while (1) {
+		memset(message, 0, sizeof(message));
+		printf("\n\n%s: ", CLIENT.name);
+		scanf("%s", message);
+		printf("\n\n%s: %s", CLIENT.name, message);
+		if (sizeof(message) > 0) {
+			send(MAIN_SEVER.sockfd, message, strlen(message), 0);
+		}
+	}
 
 	return NULL;
 }
 
 void* receiving() {
 	int bytesReceived;
-	memset(RECEIVE_MESSAGE_BUFFER, 0, sizeof(RECEIVE_MESSAGE_BUFFER));
-	bytesReceived = recv(SERVER_SOCKET, RECEIVE_MESSAGE_BUFFER, MSG_BUFF_LENGTH - 1, 0);
-	RECEIVE_MESSAGE_BUFFER[bytesReceived] = '\0';
-	printf("\n\t%s: %s", SERVER_NAME, RECEIVE_MESSAGE_BUFFER);
+	
+	while (1) {
+		memset(CLIENT.receive_msg_buff, 0, sizeof(CLIENT.receive_msg_buff));
+
+		if ((bytesReceived = recv(MAIN_SEVER.sockfd, CLIENT.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0)) > 0) {
+			CLIENT.receive_msg_buff[bytesReceived] = '\0';
+			printf("\n\t%s: %s", MAIN_SEVER.name, CLIENT.receive_msg_buff);
+		}
+		if (CLIENT.receive_msg_buff == '0') {
+			printf("\nReceived '0' from server, closing socket");
+			close(CLIENT.sockfd);
+		}
+	}
 
 	return NULL;
 }

@@ -19,14 +19,26 @@ typedef struct sockaddr_in sockaddr_in;
 typedef struct hostent hostent;
 typedef struct sockaddr sockaddr;
 
-#define MSG_BUFF_LENGTH 32
+#define MSG_BUFF_LENGTH 128
 #define SERVER_NAME "SERVER"
 
 typedef struct client {
 	SOCKET sockfd;
-	sockaddr_in client_settings;
+	sockaddr_in protocols;
 	char name[20];
+	char send_msg_buff[MSG_BUFF_LENGTH];
+	char receive_msg_buff[MSG_BUFF_LENGTH];
+	unsigned int port;
 } client;
+
+typedef struct server {
+	SOCKET sockfd;
+	sockaddr_in protocols;
+	char name[20];
+	char send_msg_buff[MSG_BUFF_LENGTH];
+	char receive_msg_buff[MSG_BUFF_LENGTH];
+	unsigned int port;
+} server;
 
 void  swapNames(int);
 void* sendMyName(void*);
@@ -53,8 +65,7 @@ pthread_t    GET_NAME;
 hostent*     HOST;
 SOCKET       LOCAL_BIND_SOCKET;
 client       CLIENT[2];
-char         SEND_MESSAGE_BUFF[MSG_BUFF_LENGTH];
-char         RECEIVE_MESSAGE_BUFF[MSG_BUFF_LENGTH];
+server       SERVER;
 char*        HOSTNAME;
 int          LOCAL_PORT;
 int          NUM_CONNECT_CLIENTS = 0;
@@ -100,11 +111,11 @@ void createSocket() {
 void setupProtocols() {
 	memset(&HOST, 0, sizeof(HOST));
 	HOST = gethostbyname(HOSTNAME);
-	memset(&SEVER_SETTINGS, 0, sizeof(SEVER_SETTINGS));
-	bcopy((char*)HOST->h_addr_list[0], (char*)&SEVER_SETTINGS.sin_addr.s_addr, HOST->h_length);
-	SEVER_SETTINGS.sin_addr.s_addr = htonl(INADDR_ANY);
-	SEVER_SETTINGS.sin_family = AF_INET;
-	SEVER_SETTINGS.sin_port = htons(LOCAL_PORT);
+	memset(&SERVER.protocols, 0, sizeof(SERVER.protocols));
+	bcopy((char*)HOST->h_addr_list[0], (char*)&SERVER.protocols.sin_addr.s_addr, HOST->h_length);
+	SERVER.protocols.sin_addr.s_addr = htonl(INADDR_ANY);
+	SERVER.protocols.sin_family = AF_INET;
+	SERVER.protocols.sin_port = htons(LOCAL_PORT);
 	printf("\n>> Protocols created.");
 
 	return;
@@ -120,7 +131,9 @@ void swapNames(int sockNum) {
 
 void* sendMyName(void* sockNum) {
 	unsigned int nameSize = sizeof(CLIENT[*((int*)sockNum)].name);
-	send(CLIENT[*((int*)sockNum)].sockfd, SERVER_NAME, nameSize, 0);
+	unsigned int id = *((int*)sockNum);
+
+	send(CLIENT[id].sockfd, SERVER_NAME, nameSize, 0);
 
 	return NULL;
 }
@@ -155,7 +168,7 @@ void* listenAcceptSocket() {
 		SOCKADDR_IN_SIZE = sizeof(struct sockaddr_in);
 
 		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(LOCAL_BIND_SOCKET, 
-			(sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].client_settings, &SOCKADDR_IN_SIZE)) < 0) {
+			(sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {
 			int errorNumber = errno;
 			printf("\nAccept failed with error code: %d", errorNumber);
 			exit(1);
@@ -189,21 +202,29 @@ void communicate(int sockNum) {
 void* receiving(void* sockNum) {
 	unsigned int bytesReceived;
 	unsigned int id = *((int*)sockNum);
-	memset(RECEIVE_MESSAGE_BUFF, 0, sizeof(RECEIVE_MESSAGE_BUFF));
-	bytesReceived = recv(CLIENT[id].sockfd, RECEIVE_MESSAGE_BUFF, MSG_BUFF_LENGTH - 1, 0);
-	RECEIVE_MESSAGE_BUFF[bytesReceived] = '\0';
-	printf("\n\t%s: %s", CLIENT[id].name, RECEIVE_MESSAGE_BUFF);
 	
+	while (1) {
+		memset(SERVER.receive_msg_buff, 0, sizeof(SERVER.receive_msg_buff));
+		bytesReceived = recv(CLIENT[id].sockfd, SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
+		SERVER.receive_msg_buff[bytesReceived] = '\0';
+		printf("\n\t%s: %s", CLIENT[id].name, SERVER.receive_msg_buff);
+	}
 	return NULL;
 }
 void* sending(void* sockNum) {
 	char* message;
 	unsigned int id = *((int*)sockNum);
-	printf("\n\n%s: ", SERVER_NAME);
-	scanf("%s", message);
-	printf("\n%s: %s", SERVER_NAME, message);
-	send(CLIENT[id].sockfd, message, strlen(message), 0);
-	memset(message, 0, sizeof(message));
+	
+	while (1) {
+		printf("\n\n%s: ", SERVER_NAME);
+		scanf("%s", message);
+		printf("\n%s: %s", SERVER_NAME, message);
+		send(CLIENT[id].sockfd, message, strlen(message), 0);
+		if (message == '0') {
+			--NUM_CONNECT_CLIENTS;
+		}
+		memset(message, 0, sizeof(message));
+	}
 	
 	return NULL;
 }
