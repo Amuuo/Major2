@@ -19,7 +19,7 @@ typedef struct sockaddr_in sockaddr_in;
 typedef struct hostent hostent;
 typedef struct sockaddr sockaddr;
 
-#define MSG_BUFF_LENGTH 128
+#define MSG_BUFF_LENGTH 256
 #define NAME_SIZE 10
 #define SERVER_NAME "SERVER"
 
@@ -52,11 +52,14 @@ void* listenAcceptSocket();
 void* sending(void*);
 void* receiving(void*);
 void  clearStdin();
+void  initializeMutexes();
 
 //======================================
 //          GLOBAL VARIABLES
 //======================================
 
+pthread_mutex_t RECEIVE_MUTEX;
+pthread_mutex_t SENDING_MUTEX;
 pthread_t    LISTEN_THREAD;
 pthread_t    COMMUNICATE_THREAD;
 pthread_t    RECEIVE_THREAD[2];
@@ -65,7 +68,7 @@ pthread_t    SEND_NAME_THREAD;
 pthread_t    GET_NAME_THREAD;
 pthread_t    SWAP_THREAD;
 hostent*     HOST;
-client       CLIENT[2];
+client*      CLIENT = NULL;
 server       MAIN_SERVER;
 char*        HOSTNAME;
 int          NUM_CONNECT_CLIENTS = 0;
@@ -210,12 +213,21 @@ void* receiving(void* sockNum) {
 	unsigned int id = *((int*)sockNum);
 	
 	while (1) {
+		pthread_mutex_lock(&RECEIVE_MUTEX);
 		printf("\nReceiving TID: %ld", RECEIVE_THREAD[id]);
 		memset(MAIN_SERVER.receive_msg_buff, 0, sizeof(MAIN_SERVER.receive_msg_buff));
 		//clearStdin();
+		printf("\nWaiting for public key from first client...");
 		bytesReceived = recv(CLIENT[id].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
+		printf("\nMessage received: %s", MAIN_SERVER.receive_msg_buff);
+		if (/*Recieved prime numbers 'p' and 'q' are valid*/ 1) {
+
+			/*generate public key (n,d), store in MAIN_SERVER.n, and MAIN_SERVER.d*/
+
+		}
 		MAIN_SERVER.receive_msg_buff[bytesReceived] = '\0';
 		printf("\n%s: %s", CLIENT[id].name, MAIN_SERVER.receive_msg_buff);
+		pthread_mutex_unlock(&RECEIVE_MUTEX);
 	}
 	return NULL;
 }
@@ -224,6 +236,7 @@ void* sending(void* sockNum) {
 	unsigned int id = *((int*)sockNum);
 	
 	while (1) {
+		pthread_mutex_lock(&SENDING_MUTEX);
 		message = (char*)malloc(MSG_BUFF_LENGTH);
 		printf("\nSending TID: %ld", SENDING_THREAD[id]);
 		printf("\n\n%s: ", SERVER_NAME);
@@ -235,8 +248,8 @@ void* sending(void* sockNum) {
 			--NUM_CONNECT_CLIENTS;
 		}
 		free(message);
-		//memset(message, 0, sizeof(message));
 		clearStdin();
+		pthread_mutex_lock(&SENDING_MUTEX);
 	}
 	
 	return NULL;
@@ -246,6 +259,12 @@ void clearStdin() {
 	do {
 		tmp = getchar();
 	} while (tmp != EOF && tmp != '\n');
+}
+
+void initializeMutexes() {
+	pthread_mutex_init(&RECEIVE_MUTEX, NULL);
+	pthread_mutex_init(&SENDING_MUTEX, NULL);
+	return;
 }
 
 

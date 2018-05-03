@@ -13,10 +13,19 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#define MSG_BUFF_LENGTH 128
+#define MSG_BUFF_LENGTH 256
 typedef int SOCKET;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct hostent hostent;
+
+/*
+typedef struct streams {
+	FILE* RECEIVE_OUT_STREAM;
+	FILE* RECEIVE_IN_STREAM;
+	FILE* SENDING_OUT_STREAM;
+	FILE* SENDING_IN_STREAM;
+} Streams;
+*/
 
 typedef struct client {
 	SOCKET sockfd;
@@ -25,7 +34,8 @@ typedef struct client {
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
 	unsigned int port;
-} client;
+	//Streams filestreams;
+} Client;
 
 typedef struct server {
 	SOCKET sockfd;
@@ -34,7 +44,8 @@ typedef struct server {
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
 	unsigned int port;
-} server;
+	//Streams filestreams;
+} Server;
 
 void* receiving();
 void* sending();
@@ -47,6 +58,7 @@ void  connectSocket();
 void  communicate();
 void  setupAsSever();
 void  clearStdin();
+//void  initializeFileStreams(void*, char);
 
 //======================================
 //          GLOBAL VARIABLES
@@ -58,9 +70,14 @@ pthread_t       SENDING_THREAD;
 pthread_t       SEND_NAME_THREAD;
 pthread_t       GET_NAME_THREAD;
 pthread_mutex_t MUTEX;
-client          CLIENT;
-server          MAIN_SERVER;
-
+Client          CLIENT;
+Server          MAIN_SERVER;
+/*
+FILE*           RECEIVE_OUT_STREAM;
+FILE*           RECEIVE_IN_STREAM;
+FILE*           SENDING_OUT_STREAM;
+FILE*           SENDING_IN_STREAM;
+*/
 //=================================================================
 //                            M A I N
 //=================================================================
@@ -73,6 +90,7 @@ int main(int argc, char* argv[]) {
 	}
 	MAIN_SERVER.port = atoi(argv[2]);
 	strcpy(CLIENT.name, argv[3]);
+	initializeFileStreams(&CLIENT, "C");
 
 	createSocket();
 	setupProtocols(argv[1]);
@@ -156,10 +174,12 @@ void* sending() {
 	
 	while (1) {
 		printf("\nSending TID: %ld", SENDING_THREAD);
-		printf("\n\n%s: ", CLIENT.name);
-		scanf("%s", message);
+		printf("\n\n%s, enter public key (p q): ", CLIENT.name);
+		//scanf("%s", message);
+		fgets(CLIENT.send_msg_buff, MSG_BUFF_LENGTH, stdin);
+		
 		if (sizeof(message) > 0) {
-			send(MAIN_SERVER.sockfd, message, strlen(message), 0);
+			send(MAIN_SERVER.sockfd, CLIENT.send_msg_buff, MSG_BUFF_LENGTH, 0);
 		}
 		memset(message, 0, sizeof(message));
 		clearStdin();
@@ -193,3 +213,20 @@ void clearStdin() {
 		tmp = getchar();
 	} while (tmp != EOF && tmp != '\n');
 }
+
+/*
+void initializeFileStreams(void* tmpObj, char id) {
+	if (id == 'C' || id == 'c') {
+		((Client*)tmpObj)->filestreams.RECEIVE_OUT_STREAM = fopen(strcat(((Client*)tmpObj)->name, "RECEIVE_OUT_STREAM"), "a+");
+		((Client*)tmpObj)->filestreams.RECEIVE_IN_STREAM  = fopen(strcat(((Client*)tmpObj)->name, "RECEIVE_IN_STREAM"), "a+");
+		((Client*)tmpObj)->filestreams.SENDING_OUT_STREAM = fopen(strcat(((Client*)tmpObj)->name, "SENDING_OUT_STREAM"), "a+");
+		((Client*)tmpObj)->filestreams.SENDING_IN_STREAM  = fopen(strcat(((Client*)tmpObj)->name, "SENDING_IN_STREAM"), "a+");
+	}
+	else if (id == 'S' || id == 'S') {
+		((Server*)tmpObj)->filestreams.RECEIVE_OUT_STREAM = fopen(strcat(((Server*)tmpObj)->name, "RECEIVE_OUT_STREAM"), "a+");
+		((Server*)tmpObj)->filestreams.RECEIVE_IN_STREAM  = fopen(strcat(((Server*)tmpObj)->name, "RECEIVE_IN_STREAM"), "a+");
+		((Server*)tmpObj)->filestreams.SENDING_OUT_STREAM = fopen(strcat(((Server*)tmpObj)->name, "SENDING_OUT_STREAM"), "a+");
+		((Server*)tmpObj)->filestreams.SENDING_IN_STREAM  = fopen(strcat(((Server*)tmpObj)->name, "SENDING_IN_STREAM"), "a+");
+	}
+}
+*/
