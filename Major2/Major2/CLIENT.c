@@ -17,6 +17,7 @@
 typedef int SOCKET;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct hostent hostent;
+typedef struct sockaddr sockaddr;
 
 typedef struct {
 	SOCKET sockfd;
@@ -46,6 +47,7 @@ void  setupProtocols(char*);
 void  connectSocket();
 void  communicate();
 void  setupAsSever();
+void  connectToClient2();
 
 //======================================
 //          GLOBAL VARIABLES
@@ -58,6 +60,7 @@ pthread_t       SEND_NAME_THREAD;
 pthread_t       GET_NAME_THREAD;
 pthread_mutex_t MUTEX;
 Client          CLIENT;
+Client          CLIENT2;
 Server          MAIN_SERVER;
 unsigned int    P;
 unsigned int    Q;
@@ -171,16 +174,22 @@ void* sending() {
 		CLIENT.receive_msg_buff[bytesReceived] = '\0';
 
 		FILE* server_msg = fopen("server_msg", "a+");
-		while ((c = fgetc(server_msg)) != EOF) {
+		while ((c = fgetc(CLIENT.receive_msg_buff)) != '\0') {
 			fputc(c, server_msg);
 		}
-		if (CLIENT.receive_msg_buff == "0") {
+		rewind(server_msg);
+		char* tmp;
+		if (fscanf(server_msg, "%s", tmp) == "0") {
 			printf("\nReceived '0' from Main Server, disconnecting...");
 			close (MAIN_SERVER.sockfd);
 			exit(3);
 		}
-		else if () {
-
+		else if (tmp == "KEY") {
+			sockaddr_in* tmpAddr;
+			recv(MAIN_SERVER.sockfd, (sockaddr*)tmpAddr, sizeof(sockaddr), 0);
+			CLIENT2.protocols = *tmpAddr;
+			sleep(1);
+			connectToClient2();
 		}
 		memset(message, 0, sizeof(message));
 	}
@@ -209,4 +218,13 @@ void* receiving() {
 void setupAsSever() {
 
 	return;
+}
+
+void connectToClient2() {
+	int check;
+	if ((connect(CLIENT2.sockfd, (sockaddr*)&CLIENT2.protocols, sizeof(CLIENT2.protocols))) < 0) {
+		int errorNum = errno;
+		printf("\nCould not connect with CLIENT2, Error: %d", errorNum);
+		exit(2);
+	}
 }

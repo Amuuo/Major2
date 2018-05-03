@@ -231,11 +231,16 @@ void* handleClients(void* sockNum) {
 			char* private_key;
 
 			/*********************************************************
-			 generate private key and send to CLIENT2 as string in the 
-			  format "KEY n e" 
+			 generate public key and send to CLIENT[abs(id-1)] as 
+			 string in the format "KEY n e" 
 			 *********************************************************/
 			
 			send(CLIENT[abs(id - 1)].sockfd, private_key, strlen(private_key), 0);
+
+			/*********************************************************
+			 follow up message with another message containing 
+			 CLIENT[abs(id-1)].protocols, so CLIENT[id] can connect
+			 *********************************************************/
 		}
 		// if there's not 2 clients connected, signal client to disconnect with '0'
 		else {
