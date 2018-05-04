@@ -209,7 +209,7 @@ void* receiving() {
 	return NULL;
 }
 void setupAsSever() {
-	if ((recv(THIS_CLIENT.sockfd, (sockaddr*)&THAT_CLIENT.protocols, sizeof(sockaddr*), 0)) < 0) {
+	if ((recv(THIS_CLIENT.sockfd, &THAT_CLIENT.protocols, sizeof(sockaddr_in*), 0)) < 0) {
 		printf("\nTHIS_CLIENT failed to get protocols for THAT_CLIENT from MAIN_SERVER, Error: %d", errno);
 		close(THIS_CLIENT.sockfd);
 		exit(8);
