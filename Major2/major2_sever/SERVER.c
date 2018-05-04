@@ -226,13 +226,15 @@ void* handleClients(void* sockNum) {
 		generate public key (n,d), send to CLIENT[1], format: "KEY n d"
 		place result in MAIN_SERVER.send_msg_buff
 		*********************************************************************/
-		char* tmp = "KEY ";
+		/*char* tmp = "KEY ";
 		char* tmp2;
 		char* tmp3;
 		itoa(INTPAIR[0], tmp2, sizeof(int));
 		itoa(INTPAIR[1], tmp3, sizeof(int));
 		strcat(tmp, tmp2);
-		strcat(tmp, tmp3);
+		strcat(tmp, tmp3);*/
+		memset(MAIN_SERVER.send_msg_buff, 0, MSG_BUFF_LENGTH);
+		strcpy(MAIN_SERVER.send_msg_buff, "KEY");
 
 		if ((send(CLIENT[1].sockfd, MAIN_SERVER.send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
 			printf("\n>> MAIN_SERVER failed to send private key to CLIENT[1], Error: %d", errno);
@@ -240,8 +242,14 @@ void* handleClients(void* sockNum) {
 			close(CLIENT[1].sockfd);
 			exit(1);
 		}
-		printf("\n>> MAIN_SERVER sent public key to CLIENT[1]");
-
+		printf("\n>> MAIN_SERVER sent 'KEY' to CLIENT[1]");
+		if ((send(CLIENT[1].sockfd, INTPAIR, sizeof(int) * 2, 0)) < 0) {
+			printf("\n Failed to send public key pair to CLIENT[1], Error: %d", errno);
+			close(CLIENT[0].sockfd);
+			close(CLIENT[1].sockfd);
+			exit(1);
+		}
+		printf("\n>> Sent public key pair to CLIENT[1]");
 		/*******************************************************
 		 follow up message with another message containing 
 		 CLIENT[0].protocols, so CLIENT[1] can connect
