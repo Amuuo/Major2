@@ -236,12 +236,12 @@ void connectToClientServer() {
 	close(THIS_CLIENT.sockfd);
 	printf("\n>> Disconnected with MAIN_SERVER");
 	printf("\n>> Closing original socket");
-	THIS_CLIENT.protocols.sin_port = htons(THIS_CLIENT.protocols.sin_port+1);
+	THAT_CLIENT_SERVER.protocols.sin_port = htons(THAT_CLIENT_SERVER.protocols.sin_port+1);
 
-	if ((THIS_CLIENT.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+	if ((THAT_CLIENT_SERVER.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		printf("\n>> Failed to create new socket");
 	}
-	printf("\n>> New socket created at port %d", THIS_CLIENT.protocols.sin_port);
+	printf("\n>> New socket created at port %d", THAT_CLIENT_SERVER.protocols.sin_port);
 
 	if ((connect(THAT_CLIENT_SERVER.sockfd, (sockaddr_in*)&THAT_CLIENT_SERVER.protocols, sizeof(sockaddr))) < 0) {
 		int errorNum = errno;
@@ -271,6 +271,8 @@ void encrypt(char* msg) {
 void receiveEncryptedMsg() {
 	int bytesReceived;
 	while (1) {
+		printf("\nNo decryption functions yet. HELP!");
+		/*placeholder to keep the loop from rolling*/char m; scanf("%c", &m);
 		memset(THIS_CLIENT.encrypted_buff, 0, MSG_BUFF_LENGTH * sizeof(int));
 		if (bytesReceived = (recv(THAT_CLIENT_SERVER.sockfd, THIS_CLIENT.encrypted_buff, MSG_BUFF_LENGTH * sizeof(int), 0)) < 0) {
 			printf("\n>> Failed to receive message from THAT_CLIENT_SERVER, Error: %d", errno);
@@ -287,6 +289,9 @@ void receiveEncryptedMsg() {
 
 void sendEncryptedMsg() {
 	char* msg;
+	printf("\nNo encryption functions yet. HELP!");
+	/*placeholder to keep the loop from rolling*/
+	char m; scanf("%c", &m);
 	while (1) {
 		printf("\n\nMessage: ");
 		scanf("%s", msg);
