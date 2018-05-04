@@ -168,6 +168,7 @@ void* sending() {
 	int bytesReceived;
 	char c;
 	while (1) {
+
 		printf("\nSending TID: %ld", SENDING_THREAD);
 		printf("\n\n%s, enter prime numbers key (p q): ", THIS_CLIENT.name);
 		//scanf("%s", message);
@@ -310,28 +311,36 @@ void encrypt(char* msg) {
 
 void receiveEncryptedMsg() {
 	int bytesReceived;
-	memset(THIS_CLIENT.receive_encrypted_buff, 0, MSG_BUFF_LENGTH*sizeof(int));
-	if (bytesReceived = (revc(THAT_CLIENT_SERVER.sockfd, THIS_CLIENT.receive_encrypted_buff, MSG_BUFF_LENGTH*sizeof(int), 0)) < 0) {
-		printf("\nTHIS_CLIENT failed to receive message from THAT_CLIENT_SERVER, Error: %d", errno);
-		printf("\nExiting...");
-		exit(3);
+	while (1) {
+		memset(THIS_CLIENT.encrypted_buff, 0, MSG_BUFF_LENGTH * sizeof(int));
+		if (bytesReceived = (revc(THAT_CLIENT_SERVER.sockfd, THIS_CLIENT.encrypted_buff, MSG_BUFF_LENGTH * sizeof(int), 0)) < 0) {
+			printf("\nTHIS_CLIENT failed to receive message from THAT_CLIENT_SERVER, Error: %d", errno);
+			printf("\nExiting...");
+			exit(3);
+		}
+		printf("\nReceived encrypted message from THAT_CLIENT_SERVER");
+		int i;
+		for (i = 0; i < (bytesReceived / 4); ++i) {
+			printf("%c", decrypt(THIS_CLIENT.encrypted_buff[i]));
+		}
 	}
-	printf("\nReceived encrypted message from THAT_CLIENT_SERVER");
-	int i;
-	for (i = 0; i < (bytesReceived / 4); ++i) {
-		printf("%c", decrypt(THIS_CLIENT.receive_encrypted_buff[i]));
-	}
-	
 }
 
 void sendEncryptedMsg() {
 	char* msg;
-	printf("\nMessage: ");
-	scanf("%s", msg);
-	memset(THIS_CLIENT_SERVER.encrypted_buff, 0, MSG_BUFF_LENGTH * sizeof(int));
-	int i;
-	for (i = 0; i < strlen(msg); ++i) {
-		// THIS_CLIENT_SERVER.encrypted_buff[i] = encrypt(msg[i]);
+	while (1) {
+		printf("\nMessage: ");
+		scanf("%s", msg);
+		memset(THIS_CLIENT_SERVER.encrypted_buff, 0, MSG_BUFF_LENGTH * sizeof(int));
+		int i;
+		for (i = 0; i < strlen(msg); ++i) {
+			// THIS_CLIENT_SERVER.encrypted_buff[i] = encrypt(msg[i]);
+		}
+		if ((send(THAT_CLIENT.sockfd, THIS_CLIENT_SERVER.encrypted_buff, MSG_BUFF_LENGTH * sizeof(int), 0)) < 0) {
+			printf("\nTHIS_CLIENT_SERVER failed to send encrypted message to THAT_CLIENT, Error: %d", errno);
+		}
+		else {
+			printf("\nEncrypted message sent to THAT_CLIENT");
+		}
 	}
-	if ((send(THAT_CLIENT)
 }
