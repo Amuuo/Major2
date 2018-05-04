@@ -150,7 +150,7 @@ void* getClientName(void* sockNum) {
 }
 void bindSocket() {
 	if ((bind(MAIN_SERVER.sockfd, (sockaddr*)&MAIN_SERVER.protocols, sizeof(MAIN_SERVER.protocols))) < 0) {		
-		printf("\nBind failed with error code: %d", errno);
+		printf("\n>> Bind failed with error code: %d", errno);
 		exit(1);
 	}
 	printf("\n>> Bind Succeeded");
@@ -170,10 +170,10 @@ void* listenAcceptSocket() {
 		SOCKADDR_IN_SIZE = sizeof(sockaddr_in);
 
 		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, (sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {			
-			printf("\nAccept failed with error code: %d", errno);
+			printf("\n>> Accept failed with error code: %d", errno);
 			exit(1);
 		} 
-		printf("\nClient[%d] connected", NUM_CONNECT_CLIENTS);
+		printf("\n>> Client[%d] connected", NUM_CONNECT_CLIENTS);
 		// get host info from client, to eventually hand of to CLIENT2
 		//getpeername(CLIENT[NUM_CONNECT_CLIENTS].sockfd, (sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, sizeof(sockaddr));
 		++NUM_CONNECT_CLIENTS;
@@ -183,7 +183,7 @@ void* listenAcceptSocket() {
 
 		// exit if more than 2 clients attempt to connect
 		if (NUM_CONNECT_CLIENTS > 2) {
-				printf("\nMore than 2 clients connected. Disconnecting");						
+				printf("\n>> More than 2 clients connected. Disconnecting");						
 				close(CLIENT[NUM_CONNECT_CLIENTS-1].sockfd);				
 		}
 		if (NUM_CONNECT_CLIENTS == 2) {
@@ -204,7 +204,7 @@ void* handleClients(void* sockNum) {
 		memset(MAIN_SERVER.receive_msg_buff, 0, sizeof(MAIN_SERVER.receive_msg_buff));
 		memset(MAIN_SERVER.send_msg_buff, 0, sizeof(MAIN_SERVER.send_msg_buff));
 
-		printf("\nWaiting for public key from first client...");
+		printf("\n>> Waiting for public key from first client...");
 
 		// send CLIENT[0] a msg to send back 2 prime numbers
 		strcpy(MAIN_SERVER.send_msg_buff, "Send 2 prime numbers (p,q)");
@@ -214,7 +214,7 @@ void* handleClients(void* sockNum) {
 			exit(2);
 		}
 		bytesReceived = recv(CLIENT[0].sockfd, (int*)INTPAIR, sizeof(int)*2, 0);
-		printf("\>> Primes received: %d, %d", INTPAIR[0], INTPAIR[1]);
+		printf("\n>> Primes received: %d, %d", INTPAIR[0], INTPAIR[1]);
 
 			
 		//while (/*Recieved prime numbers 'p' and 'q' are not valid*/ 1) {
@@ -233,10 +233,10 @@ void* handleClients(void* sockNum) {
 		itoa(INTPAIR[1], tmp3, sizeof(int));
 		strcat(tmp, tmp2);
 		strcat(tmp, tmp3);*/
-		memset(MAIN_SERVER.send_msg_buff, 0, MSG_BUFF_LENGTH);
-		strcpy(MAIN_SERVER.send_msg_buff, "KEY");
+		memset(CLIENT[1].send_msg_buff, 0, MSG_BUFF_LENGTH);
+		strcpy(CLIENT[1].send_msg_buff, "KEY");
 
-		if ((send(CLIENT[1].sockfd, MAIN_SERVER.send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
+		if ((send(CLIENT[1].sockfd, CLIENT[1].send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
 			printf("\n>> MAIN_SERVER failed to send private key to CLIENT[1], Error: %d", errno);
 			close(CLIENT[0].sockfd);
 			close(CLIENT[1].sockfd);
@@ -254,13 +254,13 @@ void* handleClients(void* sockNum) {
 		 follow up message with another message containing 
 		 CLIENT[0].protocols, so CLIENT[1] can connect
 		 *******************************************************/
-		if ((send(CLIENT[1].sockfd, &CLIENT[0].protocols, sizeof(sockaddr*), 0)) < 0) {
+		if ((send(CLIENT[1].sockfd, &CLIENT[0].protocols, sizeof(sockaddr), 0)) < 0) {
 			printf("\nMAIN_SERVER failed to send CLIENT[1] protocols for CLIENT[0]");
 			close(CLIENT[0].sockfd);
 			close(CLIENT[1].sockfd);
 			exit(1);
 		}
-		printf("\nMAIN_SERVER sent CLIENT[0] protocols to CLIENT[1]");
+		printf("\n>> Sent CLIENT[0] protocols to CLIENT[1]");
 
 		/**********************************************************
 		generate private key and send to CLIENT[0], format: int[2]
@@ -270,17 +270,17 @@ void* handleClients(void* sockNum) {
 		// intPair[1] = n
 		
 		if ((send(CLIENT[0].sockfd, INTPAIR, sizeof(int) * 2, 0)) < 0) {
-			printf("\nMAIN_SERVER failed to send private key to CLIENT[0], Error: %d", errno);
+			printf("\n>> Failed to send private key to CLIENT[0], Error: %d", errno);
 			close(CLIENT[0].sockfd);
 			close(CLIENT[1].sockfd);
 			exit(1);
 		}
-		printf("\nMAIN_SERVER sent private key to CLIENT[0]");
+		printf("\n>> Sent private key to CLIENT[0]");
 		/*******************************************************
 		follow up message with another message containing
 		CLIENT[0].protocols, so CLIENT[1] can connect
 		*******************************************************/
-		if ((send(CLIENT[0].sockfd, &CLIENT[1].protocols, sizeof(sockaddr*), 0)) < 0) {
+		if ((send(CLIENT[0].sockfd, &CLIENT[1].protocols, sizeof(sockaddr), 0)) < 0) {
 			printf("\nMAIN_SERVER failed to send CLIENT[1] protocols for CLIENT[0]");
 			close(CLIENT[0].sockfd);
 			close(CLIENT[1].sockfd);

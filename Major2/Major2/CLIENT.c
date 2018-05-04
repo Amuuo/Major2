@@ -155,12 +155,11 @@ void* receiving() {
 			printf("\nTHIS_SERVER failed to get message from MAIN_SERVER\n, Error: %d", errno);
 			close(MAIN_SERVER.sockfd);
 			exit(1);
-		}
-		else {
-			THIS_CLIENT.receive_msg_buff[bytesReceived] = '\0';
-			printf("\n%s", THIS_CLIENT.receive_msg_buff);
-		}
-		if (THIS_CLIENT.receive_msg_buff == '0') {
+		}		
+		THIS_CLIENT.receive_msg_buff[bytesReceived] = '\0';
+		printf("\n>> MAIN_SERVER: %s", THIS_CLIENT.receive_msg_buff);
+		
+		if (THIS_CLIENT.receive_msg_buff == "0") {
 			printf("\nReceived '0' from server, closing socket");
 			close(THIS_CLIENT.sockfd);
 		}
@@ -171,25 +170,15 @@ void* receiving() {
 				exit(1);
 			}
 			printf("\n>> Received public key from MAIN_SERVER: %d, %d", INTPAIR[0], INTPAIR[1]);
-			/*  THIS_CLIENT.receive_msg_buff[1] == 'E' && 
-			   THIS_CLIENT.receive_msg_buff[2] == 'Y') {			
-			int i;
-			int j = 0;
-			int k = 0;
-			char** received = (char**)malloc(sizeof(char*));
-			for (i = 0; i < bytesReceived; ++i) {
-				if (THIS_CLIENT.receive_msg_buff[i] == ' ') {
-					// expand the array of char* by 1
-					++j;
-					received = (char**)realloc(received[j], j + 1);
-				}
-				else {
-					// expand the array of char in received[j] by one
-					received[j] = (char*)malloc(sizeof(char));
-					received[j][k] = THIS_CLIENT.receive_msg_buff[i];
-					++k;
-				}
-			}*/
+			
+			memset(&THAT_CLIENT_SERVER.protocols, 0, sizeof(sockaddr));
+			if ((recv(THIS_CLIENT.sockfd, (sockaddr_in*)&THAT_CLIENT_SERVER.protocols, sizeof(sockaddr), 0)) < 0) {
+				printf("\n>> Did not receive THAT_CLIENT_SERVER protocols from MAIN_SERVER, Error: %d", errno);
+				close(MAIN_SERVER.sockfd);
+				exit(1);
+			}
+			printf("\n>> Received protocols for THAT_CLIENT_SERVER from MAIN_SERVER");
+
 			sleep(1);
 			connectToClientServer();
 		}
@@ -199,7 +188,7 @@ void* receiving() {
 			char* tmp;
 			char* tmp2;
 			
-			printf("\nEnter prime numbers <p q>: ");
+			printf("\n\nEnter prime numbers <p q>: ");
 			scanf("%d%d", &INTPAIR[0], &INTPAIR[1]);			
 
 			if ((send(MAIN_SERVER.sockfd, INTPAIR, sizeof(int) * 2, 0)) < 0) {
