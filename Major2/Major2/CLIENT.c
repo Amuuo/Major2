@@ -26,7 +26,7 @@ typedef struct {
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
 	int  encrypted_buff[MSG_BUFF_LENGTH];
-	int  int_pair[2];
+	int  primes[2];
 	unsigned int port;	
 	unsigned int d;
 	unsigned int e;
@@ -39,7 +39,7 @@ typedef struct {
 	char name[20];
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
-	int  int_pair[2];
+	int  primes[2];
 	unsigned int port;
 	unsigned int d;
 	unsigned int e;
@@ -47,8 +47,6 @@ typedef struct {
 } Server;
 
 void* receiving();
-void* sendMyName();
-void* getFriendName();
 void  createSocket();
 void  setupProtocols(char*);
 void  connectSocket();
@@ -74,7 +72,6 @@ Client          THAT_CLIENT;
 Client          THIS_CLIENT_SERVER;
 Client          THAT_CLIENT_SERVER;
 Server          MAIN_SERVER;
-int             INTPAIR[2];
 
 //=================================================================
 //                            M A I N
@@ -100,18 +97,6 @@ int main(int argc, char* argv[]) {
 }
 //=================================================================
 
-void* sendMyName() {
-	send(MAIN_SERVER.sockfd, THIS_CLIENT.name, sizeof(MAIN_SERVER.name), 0);
-
-	return NULL;
-}
-void* getFriendName() {
-	memset(&MAIN_SERVER.name[0], 0, sizeof(MAIN_SERVER.name));
-	recv(MAIN_SERVER.sockfd, MAIN_SERVER.name, sizeof(MAIN_SERVER.name), 0);
-	MAIN_SERVER.name[strlen(MAIN_SERVER.name)] = '\0';
-
-	return NULL;
-}
 void createSocket() {
 	if ((MAIN_SERVER.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		printf("\n>> Count not create socket : \n");
@@ -126,23 +111,18 @@ void setupProtocols(char* arg1) {
 	HOST = gethostbyname(arg1);
 	memset(&MAIN_SERVER.protocols, 0, sizeof(MAIN_SERVER.protocols));
 	bcopy((char*)HOST->h_addr_list[0], (char*)&MAIN_SERVER.protocols.sin_addr.s_addr, HOST->h_length);
-	MAIN_SERVER.protocols.sin_family = AF_INET;
+	MAIN_SERVER.protocols.sin_family = AF_INET;	
 	MAIN_SERVER.protocols.sin_port = htons(MAIN_SERVER.port);
 	printf("\n>> Protocols created.");
 
 	return;
 }
-void connectSocket() {
-	int check;
-	check = connect(MAIN_SERVER.sockfd, (sockaddr*)&MAIN_SERVER.protocols, sizeof(MAIN_SERVER.protocols));
-	if (check < 0) {		
-		printf("\n>> check = %d", check);
-		printf("\n>> Connect failed.. Error: %d\n", errno);
-		exit(1);
+void connectSocket() {	
+	if ((connect(MAIN_SERVER.sockfd, (sockaddr*)&MAIN_SERVER.protocols, sizeof(sockaddr))) < 0) {
+		printf("\n>> Could not connect with MAIN_SERVER, Error: %d", errno);
+		exit(1);																
 	}
-	printf("\n>> Socket connected\n\n");
-
-	return;
+	printf("\n>> Socket connected\n\n");	
 }
 
 void* receiving() {
@@ -152,7 +132,7 @@ void* receiving() {
 		memset(THIS_CLIENT.receive_msg_buff, 0, sizeof(THIS_CLIENT.receive_msg_buff));
 
 		if ((bytesReceived = recv(MAIN_SERVER.sockfd, THIS_CLIENT.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0)) < 0) {
-			printf("\nTHIS_SERVER failed to get message from MAIN_SERVER\n, Error: %d", errno);
+			printf("\n>> THIS_SERVER failed to get message from MAIN_SERVER\n, Error: %d", errno);
 			close(MAIN_SERVER.sockfd);
 			exit(1);
 		}		
@@ -163,16 +143,33 @@ void* receiving() {
 			printf("\nReceived '0' from server, closing socket");
 			close(THIS_CLIENT.sockfd);
 		}
+		else if (THIS_CLIENT.receive_msg_buff[0] == 'S' && 
+			  THIS_CLIENT.receive_msg_buff[1] == 'e' && 
+			   THIS_CLIENT.receive_msg_buff[2] == 'n') {
+			
+			memset(&THIS_CLIENT.primes, NULL, sizeof(int) * 2);
+			printf("\n\nEnter prime numbers <p q>: ");
+			scanf("%d%d", &THIS_CLIENT.primes[0], &THIS_CLIENT.primes[1]);			
+
+			if ((send(MAIN_SERVER.sockfd, THIS_CLIENT.primes, sizeof(int) * 2, 0)) < 0) {
+				printf("\n>> THIS_CLIENT failed to send intPair to MAIN_SERVER, Error: %d", errno);
+				close(MAIN_SERVER.sockfd);
+				exit(7);
+			}
+			printf("\n>> Sent prime numbers to MAIN_SERVER");
+			printf("\n>> Setting up as server");
+			setupAsSever();
+		}
 		else if (strcmp(THIS_CLIENT.receive_msg_buff, "KEY")) {
-			if ((recv(MAIN_SERVER.sockfd, (int*)INTPAIR, sizeof(int) * 2, 0)) < 0) {
+			if ((recv(MAIN_SERVER.sockfd, (int*)THIS_CLIENT.primes, sizeof(int) * 2, 0)) < 0) {
 				printf("\n>> Did not receive public key from MAIN_SERVER, Error: %d", errno);
 				close(MAIN_SERVER.sockfd);
 				exit(1);
 			}
-			printf("\n>> Received public key from MAIN_SERVER: %d, %d", INTPAIR[0], INTPAIR[1]);
+			printf("\n>> Received public key from MAIN_SERVER: %d, %d", THIS_CLIENT.primes[0], THIS_CLIENT.primes[1]);
 			
 			memset(&THAT_CLIENT_SERVER.protocols, 0, sizeof(sockaddr));
-			if ((recv(THIS_CLIENT.sockfd, (sockaddr_in*)&THAT_CLIENT_SERVER.protocols, sizeof(sockaddr), 0)) < 0) {
+			if ((recv(MAIN_SERVER.sockfd, (sockaddr_in*)&THAT_CLIENT_SERVER.protocols, sizeof(sockaddr), 0)) < 0) {
 				printf("\n>> Did not receive THAT_CLIENT_SERVER protocols from MAIN_SERVER, Error: %d", errno);
 				close(MAIN_SERVER.sockfd);
 				exit(1);
@@ -182,62 +179,50 @@ void* receiving() {
 			sleep(1);
 			connectToClientServer();
 		}
-		else if (THIS_CLIENT.receive_msg_buff[0] == 'S' && 
-			  THIS_CLIENT.receive_msg_buff[1] == 'e' && 
-			   THIS_CLIENT.receive_msg_buff[2] == 'n') {
-			char* tmp;
-			char* tmp2;
-			
-			printf("\n\nEnter prime numbers <p q>: ");
-			scanf("%d%d", &INTPAIR[0], &INTPAIR[1]);			
-
-			if ((send(MAIN_SERVER.sockfd, INTPAIR, sizeof(int) * 2, 0)) < 0) {
-				printf("\nTHIS_CLIENT failed to send intPair to MAIN_SERVER, Error: %d", errno);
-				close(MAIN_SERVER.sockfd);
-				exit(7);
-			}
-			printf("\nTHIS_SERVER sent prime numbers to MAIN_SERVER");
-			printf("\nSetting up as server");
-			setupAsSever();
-		}
 	}
 
 	return NULL;
 }
 void setupAsSever() {
-	if ((recv(THIS_CLIENT.sockfd, &THAT_CLIENT.protocols, sizeof(sockaddr_in*), 0)) < 0) {
-		printf("\nTHIS_CLIENT failed to get protocols for THAT_CLIENT from MAIN_SERVER, Error: %d", errno);
+	if ((recv(MAIN_SERVER.sockfd, (sockaddr_in*)&THAT_CLIENT.protocols, sizeof(sockaddr), 0)) < 0) {
+		printf("\n>> THIS_CLIENT failed to get protocols for THAT_CLIENT from MAIN_SERVER, Error: %d", errno);
 		close(THIS_CLIENT.sockfd);
 		exit(8);
 	}
-	printf("\nObtained protocols for THAT_CLIENT");
-	THIS_CLIENT_SERVER.protocols = THIS_CLIENT.protocols;
+	memcpy(&THIS_CLIENT_SERVER.protocols, &MAIN_SERVER.protocols, sizeof(sockaddr));
+	
+	printf("\n>> Obtained protocols for THAT_CLIENT");
+	close(MAIN_SERVER.sockfd);
+	printf("\n>> Disconnected from MAIN_SERVER...");
+	close(THIS_CLIENT.sockfd);
+	printf("\n>> Closed original socket");
+
+
 	//connect on the next port
-	++THIS_CLIENT_SERVER.protocols.sin_port;
+	THIS_CLIENT_SERVER.protocols.sin_port = htons(THIS_CLIENT_SERVER.protocols.sin_port+1);
 	if ((THIS_CLIENT_SERVER.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {		
-		printf("\nCLIENT_SERVER failed to create socket at port %d, ", THIS_CLIENT_SERVER.protocols.sin_port);
+		printf("\n>> CLIENT_SERVER failed to create socket at port %d, ", THIS_CLIENT_SERVER.protocols.sin_port);
 		printf("Error: %d", errno);
 		exit(2);
 	}
-	else {
-		printf("\nCLIENT_SERVER created socket on port %d", 
-			            THIS_CLIENT_SERVER.protocols.sin_port);
+	printf("\n>> Created socket on port %d", THIS_CLIENT_SERVER.protocols.sin_port);
+	
+	if ((bind(THIS_CLIENT_SERVER.sockfd, (sockaddr*)&THIS_CLIENT_SERVER.protocols, sizeof(sockaddr))) < 0){		
+		printf("\n>> Failed to bind, Error: %d\n", errno);
+		exit(1);
 	}
-	if ((bind(THIS_CLIENT_SERVER.sockfd, (sockaddr*)&THIS_CLIENT_SERVER.protocols, sizeof(THIS_CLIENT_SERVER.protocols))) < 0){		
-		printf("\nCLIENT_SERVER failed to bind, Error: %d", errno);		
-	}
-	printf("\nCLIENT_SERVER bound to port %d", THIS_CLIENT_SERVER.protocols.sin_port);
+	printf("\n>> Bound to port %d", THIS_CLIENT_SERVER.protocols.sin_port);
 	if ((listen(THIS_CLIENT_SERVER.sockfd, 1)) < 0) {
-		printf("\nTHIS_CLIENT_SERVER failed to listen, Error: %d", errno);
+		printf("\n>> Failed to listen, Error: %d\n", errno);
 		exit(5);
 	}
-	printf("\nTHIS_CLIENT_SERVER listening for THAT_CLIENT");
+	printf("\n>> Listening for THAT_CLIENT");
 	int sockaddr_size = sizeof(sockaddr_in);
 	if ((THAT_CLIENT.sockfd = accept(THIS_CLIENT_SERVER.sockfd, (sockaddr*)&THAT_CLIENT.protocols, &sockaddr_size)) < 0) {
-		printf("\nTHIS_CLIENT_SERVER failed to accept THAT_CLIENT, Error: %d", errno);
+		printf("\n>> Failed to accept THAT_CLIENT, Error: %d\n", errno);
 		exit(6);
 	}
-	printf("\nTHIS_CLIENT_SERVER accepted THAT_CLIENT");
+	printf("\n>> Established connection to THAT_CLIENT");
 	sendEncryptedMsg();
 
 	return;
@@ -245,14 +230,25 @@ void setupAsSever() {
 
 void connectToClientServer() {
 	int bytesReceived;
-	// connecting on the next port
-	++THAT_CLIENT_SERVER.protocols.sin_port;
-	if ((connect(THAT_CLIENT_SERVER.sockfd, (sockaddr*)&THAT_CLIENT_SERVER.protocols, sizeof(THAT_CLIENT_SERVER.protocols))) < 0) {
+	// connecting on the next port	
+	memcpy(&THAT_CLIENT_SERVER.protocols, &MAIN_SERVER.protocols, sizeof(sockaddr));
+	close(MAIN_SERVER.sockfd);
+	close(THIS_CLIENT.sockfd);
+	printf("\n>> Disconnected with MAIN_SERVER");
+	printf("\n>> Closing original socket");
+	THIS_CLIENT.protocols.sin_port = htons(THIS_CLIENT.protocols.sin_port+1);
+
+	if ((THIS_CLIENT.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		printf("\n>> Failed to create new socket");
+	}
+	printf("\n>> New socket created at port %d", THIS_CLIENT.protocols.sin_port);
+
+	if ((connect(THAT_CLIENT_SERVER.sockfd, (sockaddr_in*)&THAT_CLIENT_SERVER.protocols, sizeof(sockaddr))) < 0) {
 		int errorNum = errno;
-		printf("\nCould not connect with CLIENT2, Error: %d", errorNum);
+		printf("\n>> Could not connect with THAT_CLIENT_SERVER, Error: %d", errorNum);
 		exit(2);
 	}
-	printf("\nTHIS_CLIENT connected with THAT_CLIENT_SERVER");
+	printf("\n>> Connected with THAT_CLIENT_SERVER");
 	receiveEncryptedMsg();
 }
 
@@ -277,11 +273,11 @@ void receiveEncryptedMsg() {
 	while (1) {
 		memset(THIS_CLIENT.encrypted_buff, 0, MSG_BUFF_LENGTH * sizeof(int));
 		if (bytesReceived = (recv(THAT_CLIENT_SERVER.sockfd, THIS_CLIENT.encrypted_buff, MSG_BUFF_LENGTH * sizeof(int), 0)) < 0) {
-			printf("\nTHIS_CLIENT failed to receive message from THAT_CLIENT_SERVER, Error: %d", errno);
-			printf("\nExiting...");
+			printf("\n>> Failed to receive message from THAT_CLIENT_SERVER, Error: %d", errno);
+			printf("\n>> Exiting...");
 			exit(3);
 		}
-		printf("\nReceived encrypted message from THAT_CLIENT_SERVER");
+		printf("\n>> Received encrypted message from THAT_CLIENT_SERVER");
 		int i;
 		for (i = 0; i < (bytesReceived / 4); ++i) {
 			printf("%c", decrypt(THIS_CLIENT.encrypted_buff[i]));
@@ -292,7 +288,7 @@ void receiveEncryptedMsg() {
 void sendEncryptedMsg() {
 	char* msg;
 	while (1) {
-		printf("\nMessage: ");
+		printf("\n\nMessage: ");
 		scanf("%s", msg);
 		memset(THIS_CLIENT_SERVER.encrypted_buff, 0, MSG_BUFF_LENGTH * sizeof(int));
 		int i;
@@ -300,10 +296,10 @@ void sendEncryptedMsg() {
 			// THIS_CLIENT_SERVER.encrypted_buff[i] = encrypt(msg[i]);
 		}
 		if ((send(THAT_CLIENT.sockfd, THIS_CLIENT_SERVER.encrypted_buff, MSG_BUFF_LENGTH * sizeof(int), 0)) < 0) {
-			printf("\nTHIS_CLIENT_SERVER failed to send encrypted message to THAT_CLIENT, Error: %d", errno);
+			printf("\n>> Failed to send encrypted message to THAT_CLIENT, Error: %d", errno);
 		}
 		else {
-			printf("\nEncrypted message sent to THAT_CLIENT");
+			printf("\n>> Encrypted message sent to THAT_CLIENT");
 		}
 	}
 }
