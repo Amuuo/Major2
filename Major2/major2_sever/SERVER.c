@@ -47,16 +47,14 @@ typedef struct {
 	unsigned int e;
 } server;
 
-void* sendMyName(void*);
-void* getClientName(void*);
 void  createSocket();
 void  setupProtocols();
 void  bindSocket();
 void* listenAcceptSocket();
 void* handleClients(void*);
 void  initializeMutexes();
-void  createPublicKey();
-void  createPrivateKey();
+int*  createPublicKey();
+int*  createPrivateKey();
 
 //======================================
 //          GLOBAL VARIABLES
@@ -100,8 +98,6 @@ int main(int argc, char* argv[]) {
 	bindSocket();
 	pthread_create(&LISTEN_THREAD, NULL, &listenAcceptSocket, NULL);
 	pthread_join(LISTEN_THREAD, NULL);
-	//swapNames();
-	//communicate();
 
 	return 0;
 }
@@ -128,21 +124,6 @@ void setupProtocols() {
 	printf("\n>> Protocols created.");
 
 	return;
-}
-void* sendMyName(void* sockNum) {
-	unsigned int id = *((int*)sockNum);
-	unsigned int nameSize = sizeof(MAIN_SERVER.name);
-
-	send(CLIENT[id].sockfd, MAIN_SERVER.name, nameSize, 0);
-
-	return NULL;
-}
-void* getClientName(void* sockNum) {
-	unsigned int id = *((int*)sockNum);	
-	recv(CLIENT[id].sockfd, CLIENT[id].name, NAME_SIZE, 0);
-	CLIENT[id].name[strlen(CLIENT[id].name)] = '\0';
-
-	return NULL;
 }
 void bindSocket() {
 	if ((bind(MAIN_SERVER.sockfd, (sockaddr*)&MAIN_SERVER.protocols, sizeof(MAIN_SERVER.protocols))) < 0) {		
@@ -249,18 +230,18 @@ void* handleClients(void* sockNum) {
 		exit(1);
 	}
 	printf("\n>> Sent public key pair to CLIENT[1]");
-	/*******************************************************
-		follow up message with another message containing 
-		CLIENT[0].protocols, so CLIENT[1] can connect
-		*******************************************************/
+	/****************************************************
+	 follow up message with another message containing 
+	 CLIENT[0].protocols, so CLIENT[1] can connect
+	****************************************************/
 	char tmpHostName[50];
 	char tmpAddressName[50];
 	getnameinfo(&CLIENT[0].protocols, sizeof(sockaddr), tmpHostName, 50, tmpAddressName, 50, 0);
-	printf("\n>> Obtained CLIENT[0] info: \n\tHostname: %s\n\tAddressName: %s", tmpHostName, tmpAddressName);
+	printf("\n\n>> Obtained CLIENT[0] info: \n\tHostname: %s\n\tAddressName: %s", tmpHostName, tmpAddressName);
 	char tmpHostName2[50];
 	char tmpAddressName2[50];
 	getnameinfo(&CLIENT[1].protocols, sizeof(sockaddr), tmpHostName2, 50, tmpAddressName2, 50, 0);
-	printf("\n>> Obtained CLIENT[0] info: \n\tHostname: %s\n\tAddressName: %s", tmpHostName2, tmpAddressName2);
+	printf("\n\n>> Obtained CLIENT[0] info: \n\tHostname: %s\n\tAddressName: %s", tmpHostName2, tmpAddressName2);
 
 	if ((send(CLIENT[1].sockfd, &CLIENT[0].protocols, sizeof(sockaddr), 0)) < 0) {
 		printf("\nMAIN_SERVER failed to send CLIENT[1] protocols for CLIENT[0]");
@@ -270,8 +251,8 @@ void* handleClients(void* sockNum) {
 	}
 	printf("\n>> Sent CLIENT[0] protocols to CLIENT[1]");
 
-	/**********************************************************
-	generate private key and send to CLIENT[0], format: int[2]
+	/***********************************************************
+	 generate private key and send to CLIENT[0], format: int[2]
 	***********************************************************/
 
 	// intPair[0] = e
@@ -286,9 +267,9 @@ void* handleClients(void* sockNum) {
 		exit(1);
 	}
 	printf("\n>> Sent private key to CLIENT[0]");
-	/*******************************************************w
-	follow up message with another message containing
-	CLIENT[0].protocols, so CLIENT[1] can connect
+	/*******************************************************
+	 follow up message with another message containing
+	 CLIENT[0].protocols, so CLIENT[1] can connect
 	*******************************************************/
 	if ((send(CLIENT[0].sockfd, &CLIENT[1].protocols, sizeof(sockaddr), 0)) < 0) {
 		printf("\nMAIN_SERVER failed to send CLIENT[1] protocols for CLIENT[0]");
@@ -302,7 +283,7 @@ void* handleClients(void* sockNum) {
 	printf("\n>> Closing connection with CLIENT[1]");
 	//close(CLIENT[1].sockfd);
 
-	pthread_mutex_unlock(&RECEIVE_MUTEX);
+	//pthread_mutex_unlock(&RECEIVE_MUTEX);
 	
 	return NULL;
 }
@@ -312,12 +293,16 @@ void initializeMutexes() {
 	return;
 }
 
-void createPublicKey() {
-
+int* createPublicKey() {
+	/******************************************
+	      Public Key algorithm goes here
+	******************************************/
 }
 
-void createPrivateKey() {
-
+int* createPrivateKey() {
+	/******************************************
+	      Private Key algorithm goes here
+	******************************************/
 }
 
 

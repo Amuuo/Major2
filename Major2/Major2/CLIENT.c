@@ -271,7 +271,7 @@ void encrypt(char* msg) {
 void receiveEncryptedMsg() {
 	int bytesReceived;
 	printf("\n\n\t *****NO DECRYPTION FUNCTION YET. HELP!******");
-	printf("\n\n>> Exiting just before receiveEncryptedMsg() runs its loop\n\n\n");
+	printf("\n\n>> Exiting just before receiveEncryptedMsg() runs loop\n\n\n");
 	exit(1);
 	while (1) {
 		
@@ -292,7 +292,7 @@ void receiveEncryptedMsg() {
 void sendEncryptedMsg() {
 	char* msg;
 	printf("\n\n\t *****NO ENCRYPTION FUNCTION YET. HELP!*****");
-	printf("\n\n >> Exiting just before sendEncryptedMsg function\n\n\n");
+	printf("\n\n >> Exiting just before sendEncryptedMsg() runs loop\n\n\n");
 	exit(1);
 	while (1) {
 		printf("\n\nMessage: ");
