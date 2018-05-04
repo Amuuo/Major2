@@ -322,3 +322,7 @@ void receiveEncryptedMsg() {
 	}
 	
 }
+
+void sendEncryptedMsg() {
+
+}
