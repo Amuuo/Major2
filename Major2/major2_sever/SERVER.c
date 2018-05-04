@@ -64,7 +64,7 @@ void  initializeMutexes();
 pthread_mutex_t RECEIVE_MUTEX;
 pthread_mutex_t SENDING_MUTEX;
 pthread_cond_t  RECEIVE_CONDITION;
-pthread_cond_t  SENDING_CONDITION;
+pthread_cond_t  LISTEN_CONDITION;
 pthread_t    LISTEN_THREAD;
 pthread_t    COMMUNICATE_THREAD;
 pthread_t    RECEIVE_THREAD[2];
@@ -83,6 +83,9 @@ int          SOCKADDR_IN_SIZE;
 //                            M A I N
 //=================================================================
 int main(int argc, char* argv[]) {
+
+	pthread_cond_init(&RECEIVE_CONDITION, NULL);
+	pthread_cond_init(&LISTEN_CONDITION, NULL);
 
 	if (argc < 3) 
 		printf("\nUsage: <hostname> <port>...");
@@ -194,7 +197,9 @@ void* listenAcceptSocket() {
 				printf("\nMore than 2 clients connected. Disconnecting");						
 				close(CLIENT[NUM_CONNECT_CLIENTS-1].sockfd);				
 		}
-		pthread_create(&RECEIVE_THREAD[sockNum], NULL, &handleClients, (void*)&sockNum);
+		if (NUM_CONNECT_CLIENTS == 2) {
+			pthread_create(&RECEIVE_THREAD[sockNum], NULL, &handleClients, (void*)&sockNum);
+		}
 	}
 	return NULL;
 }
@@ -205,8 +210,10 @@ void* handleClients(void* sockNum) {
 	
 	while (1) {
 		pthread_mutex_lock(&RECEIVE_MUTEX);
-		printf("\nReceiving TID: %ld", RECEIVE_THREAD[id]);
 		memset(MAIN_SERVER.receive_msg_buff, 0, sizeof(MAIN_SERVER.receive_msg_buff));
+		while (NUM_CONNECT_CLIENTS < 2) {
+			pthread_cond_wait(&RECEIVE_CONDITION, &RECEIVE_MUTEX);
+		}
 		printf("\nWaiting for public key from first client...");
 		bytesReceived = recv(CLIENT[id].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
 		printf("\nMessage received: %s", MAIN_SERVER.receive_msg_buff);
