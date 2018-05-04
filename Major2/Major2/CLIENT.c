@@ -324,5 +324,11 @@ void receiveEncryptedMsg() {
 }
 
 void sendEncryptedMsg() {
+	char* msg;
+	printf("\nMessage: ");
+	scanf("%s", msg);
+	int i;
+	for (i = 0; i < strlen(msg); ++i) {
 
+	}
 }
