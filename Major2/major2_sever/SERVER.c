@@ -65,6 +65,7 @@ pthread_mutex_t SENDING_MUTEX;
 pthread_cond_t  RECEIVE_CONDITION;
 pthread_cond_t  LISTEN_CONDITION;
 pthread_t    LISTEN_THREAD;
+pthread_t    LISTEN_THREAD2;
 pthread_t    COMMUNICATE_THREAD;
 pthread_t    RECEIVE_THREAD[2];
 pthread_t    SENDING_THREAD[2];
@@ -77,7 +78,7 @@ server       MAIN_SERVER;
 char*        HOSTNAME;
 int          NUM_CONNECT_CLIENTS = 0;
 int          SOCKADDR_IN_SIZE;
-int          INTPAIR[2];
+unsigned int INTPAIR[2];
 
 //=================================================================
 //                            M A I N
@@ -92,7 +93,6 @@ int main(int argc, char* argv[]) {
 	
 	HOSTNAME = argv[1];
 	MAIN_SERVER.port = atoi(argv[2]);
-	*MAIN_SERVER.name = SERVER_NAME;
 	createSocket();
 	setupProtocols();
 	bindSocket();
@@ -144,9 +144,9 @@ void* listenAcceptSocket() {
 		}
 
 		printf("\n>> Listening for incoming connections...");
-		SOCKADDR_IN_SIZE = sizeof(sockaddr_in);
+		socklen_t sockSize= sizeof(sockaddr);
 
-		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, (sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {			
+		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, (sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, &sockSize)) < 0) {			
 			printf("\n>> Accept failed with error code: %d", errno);
 			exit(1);
 		} 
@@ -159,12 +159,13 @@ void* listenAcceptSocket() {
 		
 		if (NUM_CONNECT_CLIENTS > 2) {
 				printf("\n>> More than 2 clients connected. Disconnecting");						
-				close(CLIENT[NUM_CONNECT_CLIENTS-1].sockfd);				
+				close(CLIENT[sockNum].sockfd);				
 		}
 		if (NUM_CONNECT_CLIENTS == 2) {
 			pthread_create(&RECEIVE_THREAD[sockNum], NULL, &handleClients, (void*)&sockNum);
-			pthread_join(&RECEIVE_THREAD, NULL);
 			NUM_CONNECT_CLIENTS = 0;
+			pthread_create(&LISTEN_THREAD2, NULL, &listenAcceptSocket, NULL);
+			pthread_join(RECEIVE_THREAD[sockNum], NULL);
 		}
 	}
 	return NULL;
@@ -175,7 +176,7 @@ void* handleClients(void* sockNum) {
 	unsigned int id = *((int*)sockNum);
 	
 	
-	pthread_mutex_lock(&RECEIVE_MUTEX);
+	//pthread_mutex_lock(&RECEIVE_MUTEX);
 	memset(MAIN_SERVER.receive_msg_buff, 0, MSG_BUFF_LENGTH);
 	memset(MAIN_SERVER.send_msg_buff, 0, MSG_BUFF_LENGTH);
 
@@ -236,11 +237,11 @@ void* handleClients(void* sockNum) {
 	****************************************************/
 	char tmpHostName[50];
 	char tmpAddressName[50];
-	getnameinfo(&CLIENT[0].protocols, sizeof(sockaddr), tmpHostName, 50, tmpAddressName, 50, 0);
+	getnameinfo((sockaddr*)&CLIENT[0].protocols, sizeof(sockaddr), tmpHostName, 50, tmpAddressName, 50, 0);
 	printf("\n\n>> Obtained CLIENT[0] info: \n\tHostname: %s\n\tAddressName: %s", tmpHostName, tmpAddressName);
 	char tmpHostName2[50];
 	char tmpAddressName2[50];
-	getnameinfo(&CLIENT[1].protocols, sizeof(sockaddr), tmpHostName2, 50, tmpAddressName2, 50, 0);
+	getnameinfo((sockaddr*)&CLIENT[1].protocols, sizeof(sockaddr), tmpHostName2, 50, tmpAddressName2, 50, 0);
 	printf("\n\n>> Obtained CLIENT[0] info: \n\tHostname: %s\n\tAddressName: %s", tmpHostName2, tmpAddressName2);
 
 	if ((send(CLIENT[1].sockfd, &CLIENT[0].protocols, sizeof(sockaddr), 0)) < 0) {
@@ -249,7 +250,7 @@ void* handleClients(void* sockNum) {
 		close(CLIENT[1].sockfd);
 		exit(1);
 	}
-	printf("\n>> Sent CLIENT[0] protocols to CLIENT[1]");
+	printf("\n\n>> Sent CLIENT[0] protocols to CLIENT[1]");
 
 	/***********************************************************
 	 generate private key and send to CLIENT[0], format: int[2]
@@ -279,9 +280,11 @@ void* handleClients(void* sockNum) {
 	}
 	
 	printf("\n>> Closing connection with CLIENT[0]");
-	//close(CLIENT[0].sockfd);
+	close(CLIENT[0].sockfd);
+	memset(&CLIENT[0], 0, sizeof(CLIENT[0]));
 	printf("\n>> Closing connection with CLIENT[1]");
-	//close(CLIENT[1].sockfd);
+	close(CLIENT[1].sockfd);
+	memset(&CLIENT[1], 0, sizeof(CLIENT[1]));
 
 	//pthread_mutex_unlock(&RECEIVE_MUTEX);
 	

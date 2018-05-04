@@ -217,7 +217,7 @@ void setupAsSever() {
 		exit(5);
 	}
 	printf("\n>> Listening for THAT_CLIENT");
-	int sockaddr_size = sizeof(sockaddr_in);
+	socklen_t sockaddr_size = sizeof(sockaddr_in);
 	if ((THAT_CLIENT.sockfd = accept(THIS_CLIENT_SERVER.sockfd, (sockaddr*)&THAT_CLIENT.protocols, &sockaddr_size)) < 0) {
 		printf("\n>> Failed to accept THAT_CLIENT, Error: %d\n", errno);
 		exit(6);
@@ -243,7 +243,7 @@ void connectToClientServer() {
 	}
 	printf("\n>> New socket created at port %d", THAT_CLIENT_SERVER.protocols.sin_port);
 
-	if ((connect(THAT_CLIENT_SERVER.sockfd, (sockaddr_in*)&THAT_CLIENT_SERVER.protocols, sizeof(sockaddr))) < 0) {
+	if ((connect(THAT_CLIENT_SERVER.sockfd, (sockaddr*)&THAT_CLIENT_SERVER.protocols, sizeof(sockaddr))) < 0) {
 		int errorNum = errno;
 		printf("\n>> Could not connect with THAT_CLIENT_SERVER, Error: %d", errorNum);
 		exit(2);
