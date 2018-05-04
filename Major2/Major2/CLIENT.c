@@ -287,12 +287,16 @@ void connectToClientServer() {
 	memset(THIS_CLIENT.receive_msg_buff, 0, MSG_BUFF_LENGTH);
 	char tmp;
 	for (i = 0; i < j; ++j) {
-		tmp = /*Decrypt function that returns char*/(atoi(received[i]));
+		tmp = decrypt(atoi(received[i]));
 		printf("%c", tmp);
 	}
 }
 
+
 char decrypt(int tmp) {
 	char letter;
+	/******************************************
+	      Decryption algorithm goes here
+	 ******************************************/
 	return letter;
 }
