@@ -166,7 +166,7 @@ void bindSocket() {
 }
 void* listenAcceptSocket() {
 	unsigned int sockNum;
-	while (NUM_CONNECT_CLIENTS < 2) {
+	while (1) {
 
 		if ((listen(MAIN_SERVER.sockfd, 2)) < 0) {			
 			printf("\n>> Listen failed, Error: %d", errno);
@@ -199,6 +199,7 @@ void* listenAcceptSocket() {
 		}
 		if (NUM_CONNECT_CLIENTS == 2) {
 			pthread_create(&RECEIVE_THREAD[sockNum], NULL, &handleClients, (void*)&sockNum);
+			NUM_CONNECT_CLIENTS = 0;
 		}
 	}
 	return NULL;
@@ -211,49 +212,44 @@ void* handleClients(void* sockNum) {
 	while (1) {
 		pthread_mutex_lock(&RECEIVE_MUTEX);
 		memset(MAIN_SERVER.receive_msg_buff, 0, sizeof(MAIN_SERVER.receive_msg_buff));
-		while (NUM_CONNECT_CLIENTS < 2) {
-			pthread_cond_wait(&RECEIVE_CONDITION, &RECEIVE_MUTEX);
-		}
 		printf("\nWaiting for public key from first client...");
-		bytesReceived = recv(CLIENT[id].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
+		bytesReceived = recv(CLIENT[0].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
 		printf("\nMessage received: %s", MAIN_SERVER.receive_msg_buff);
 		if (/*Recieved prime numbers 'p' and 'q' are valid*/ 1) {
 
 			/********************************************************************
 			 generate public key (n,d), store in MAIN_SERVER.n, and MAIN_SERVER.d
 			 *********************************************************************/
-
 		}
 		else {
 			char* msg = "\nINVALID";
-			send(CLIENT[id].sockfd, msg, strlen(msg), 0);
+			send(CLIENT[0].sockfd, msg, strlen(msg), 0);
 			continue;
 		}
 		// generate private key and send to CLIENT1
-		if (NUM_CONNECT_CLIENTS == 2) {
+
 			char* private_key;
 
-			/*********************************************************
-			 generate public key and send to CLIENT[abs(id-1)] as 
-			 string in the format "KEY n e" 
-			 *********************************************************/
+		/*******************************************************
+		 generate public key and send to CLIENT[abs(id-1)] as 
+		 string in the format "KEY n e" 
+		 *******************************************************/
 			
-			send(CLIENT[abs(id - 1)].sockfd, private_key, strlen(private_key), 0);
+		send(CLIENT[abs(id - 1)].sockfd, private_key, strlen(private_key), 0);
 
-			/*********************************************************
-			 follow up message with another message containing 
-			 CLIENT[abs(id-1)].protocols, so CLIENT[id] can connect
-			 *********************************************************/
-		}
+		/*******************************************************
+		 follow up message with another message containing 
+		 CLIENT[abs(id-1)].protocols, so CLIENT[id] can connect
+		 *******************************************************/
+		
 		// if there's not 2 clients connected, signal client to disconnect with '0'
 		else {
 			char* msg = '0';
-			send(CLIENT[id].sockfd, msg, strlen(msg), 0);
-			--NUM_CONNECT_CLIENTS;
+			send(CLIENT[0].sockfd, msg, strlen(msg), 0);
 			return NULL;
 		}
 		MAIN_SERVER.receive_msg_buff[bytesReceived] = '\0';
-		printf("\n%s: %s", CLIENT[id].name, MAIN_SERVER.receive_msg_buff);
+		printf("\n%s: %s", CLIENT[0].name, MAIN_SERVER.receive_msg_buff);
 		pthread_mutex_unlock(&RECEIVE_MUTEX);
 	}
 	return NULL;

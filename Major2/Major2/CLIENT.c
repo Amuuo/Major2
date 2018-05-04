@@ -26,6 +26,7 @@ typedef struct {
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
 	int  encrypted_buff[MSG_BUFF_LENGTH];
+	int  int_pair[2];
 	unsigned int port;	
 	unsigned int d;
 	unsigned int e;
@@ -242,7 +243,7 @@ void* receiving() {
 void setupAsSever() {
 	THIS_CLIENT_SERVER.protocols = THIS_CLIENT.protocols;
 	//connect on the next port
-	THIS_CLIENT_SERVER.protocols.sin_port += 1;
+	++THIS_CLIENT_SERVER.protocols.sin_port;
 	if ((THIS_CLIENT_SERVER.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {		
 		printf("\nCLIENT_SERVER failed to create socket at port %d, ", THIS_CLIENT_SERVER.protocols.sin_port);
 		printf("Error: %d", errno);
@@ -254,43 +255,34 @@ void setupAsSever() {
 	if ((bind(THIS_CLIENT_SERVER.sockfd, (sockaddr*)&THIS_CLIENT_SERVER.protocols, sizeof(THIS_CLIENT_SERVER.protocols))) < 0){		
 		printf("CLIENT_SERVER failed to bind, Error: %d", errno);		
 	}
+	printf("\nCLIENT_SERVER bound to port %d", THIS_CLIENT_SERVER.protocols.sin_port);
+	if ((listen(THIS_CLIENT_SERVER.sockfd, 1)) < 0) {
+		printf("\nTHIS_CLIENT_SERVER failed to listen, Error: %d", errno);
+		exit(5);
+	}
+	printf("\nTHIS_CLIENT_SERVER listening for THAT_CLIENT");
+	int sockaddr_size = sizeof(sockaddr_in);
+	if ((THAT_CLIENT.sockfd = accept(THIS_CLIENT_SERVER.sockfd, (sockaddr*)&THAT_CLIENT.protocols, &sockaddr_size)) < 0) {
+		printf("\nTHIS_CLIENT_SERVER failed to accept THAT_CLIENT, Error: %d", errno);
+		exit(6);
+	}
+	printf("\nTHIS_CLIENT_SERVER accepted THAT_CLIENT");
+	sendEncryptedMsg();
+
 	return;
 }
 
 void connectToClientServer() {
-	int check;
+	int bytesReceived;
+	// connecting on the next port
+	++THAT_CLIENT_SERVER.protocols.sin_port;
 	if ((connect(THAT_CLIENT_SERVER.sockfd, (sockaddr*)&THAT_CLIENT_SERVER.protocols, sizeof(THAT_CLIENT_SERVER.protocols))) < 0) {
 		int errorNum = errno;
 		printf("\nCould not connect with CLIENT2, Error: %d", errorNum);
 		exit(2);
 	}
-
-	
-	/*
-	int i;
-	int j = 0;
-	int k = 0;
-	char** received = (char**)malloc(sizeof(char*));
-	for (i = 0; i < bytesReceived; ++i) {
-		if (THIS_CLIENT.receive_msg_buff[i] == ' ') {
-			// expand the array of char* by 1
-			++j;
-			received = (char**)realloc(received[j], j + 1);
-		}
-		else {
-			// expand the array of char in received[j] by one
-			received[j] = (char*)malloc(sizeof(char));
-			received[j][k] = THIS_CLIENT.receive_msg_buff[i];
-			++k;
-		}
-	}
-	*/
-	memset(THIS_CLIENT.receive_msg_buff, 0, MSG_BUFF_LENGTH);
-	char tmp;
-	for (i = 0; i < j; ++j) {
-		tmp = decrypt(atoi(received[i]));
-		printf("%c", tmp);
-	}
+	printf("\nTHIS_CLIENT connected with THAT_CLIENT_SERVER");
+	receiveEncryptedMsg();
 }
 
 
