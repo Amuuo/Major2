@@ -200,6 +200,7 @@ void* listenAcceptSocket() {
 		}
 		if (NUM_CONNECT_CLIENTS == 2) {
 			pthread_create(&RECEIVE_THREAD[sockNum], NULL, &handleClients, (void*)&sockNum);
+			pthread_join(&RECEIVE_THREAD, NULL);
 			NUM_CONNECT_CLIENTS = 0;
 		}
 	}
@@ -214,7 +215,10 @@ void* handleClients(void* sockNum) {
 		pthread_mutex_lock(&RECEIVE_MUTEX);
 		memset(MAIN_SERVER.receive_msg_buff, 0, sizeof(MAIN_SERVER.receive_msg_buff));
 		memset(MAIN_SERVER.send_msg_buff, 0, sizeof(MAIN_SERVER.send_msg_buff));
+
 		printf("\nWaiting for public key from first client...");
+
+		// send CLIENT[0] a msg to send back 2 prime numbers
 		strcpy(MAIN_SERVER.send_msg_buff, "Send 2 prime numbers (p,q)");
 		if ((send(CLIENT[0].sockfd, MAIN_SERVER.send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
 			printf("\nFailed to send message \"%s\" to CLIENT[0]", MAIN_SERVER.send_msg_buff);
@@ -246,6 +250,13 @@ void* handleClients(void* sockNum) {
 		 follow up message with another message containing 
 		 CLIENT[0].protocols, so CLIENT[1] can connect
 		 *******************************************************/
+		if ((send(CLIENT[1].sockfd, &CLIENT[0].protocols, sizeof(sockaddr*), 0)) < 0) {
+			printf("\nMAIN_SERVER failed to send CLIENT[1] protocols for CLIENT[0]");
+			close(CLIENT[0].sockfd);
+			close(CLIENT[1].sockfd);
+			exit(1);
+		}
+		printf("\nMAIN_SERVER sent CLIENT[0] protocols to CLIENT[1]");
 
 		/**********************************************************
 		generate private key and send to CLIENT[0], format: int[2]
@@ -265,6 +276,12 @@ void* handleClients(void* sockNum) {
 		follow up message with another message containing
 		CLIENT[0].protocols, so CLIENT[1] can connect
 		*******************************************************/
+		if ((send(CLIENT[0].sockfd, &CLIENT[1].protocols, sizeof(sockaddr*), 0)) < 0) {
+			printf("\nMAIN_SERVER failed to send CLIENT[1] protocols for CLIENT[0]");
+			close(CLIENT[0].sockfd);
+			close(CLIENT[1].sockfd);
+			exit(1);
+		}
 
 		pthread_mutex_unlock(&RECEIVE_MUTEX);
 	}
