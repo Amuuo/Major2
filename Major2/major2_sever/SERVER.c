@@ -70,7 +70,7 @@ pthread_t    SEND_NAME_THREAD;
 pthread_t    GET_NAME_THREAD;
 pthread_t    SWAP_THREAD;
 hostent*     HOST;
-client*      CLIENT = NULL;
+client*      THIS_CLIENT = NULL;
 server       MAIN_SERVER;
 char*        HOSTNAME;
 int          NUM_CONNECT_CLIENTS = 0;
@@ -96,8 +96,8 @@ int main(int argc, char* argv[]) {
 	//communicate();
 
 	close(MAIN_SERVER.sockfd);
-	close(CLIENT[0].sockfd);
-	close(CLIENT[1].sockfd);
+	close(THIS_CLIENT[0].sockfd);
+	close(THIS_CLIENT[1].sockfd);
 
 	return 0;
 }
@@ -139,14 +139,14 @@ void* sendMyName(void* sockNum) {
 	unsigned int id = *((int*)sockNum);
 	unsigned int nameSize = sizeof(MAIN_SERVER.name);
 
-	send(CLIENT[id].sockfd, MAIN_SERVER.name, nameSize, 0);
+	send(THIS_CLIENT[id].sockfd, MAIN_SERVER.name, nameSize, 0);
 
 	return NULL;
 }
 void* getClientName(void* sockNum) {
 	unsigned int id = *((int*)sockNum);	
-	recv(CLIENT[id].sockfd, CLIENT[id].name, NAME_SIZE, 0);
-	CLIENT[id].name[strlen(CLIENT[id].name)] = '\0';
+	recv(THIS_CLIENT[id].sockfd, THIS_CLIENT[id].name, NAME_SIZE, 0);
+	THIS_CLIENT[id].name[strlen(THIS_CLIENT[id].name)] = '\0';
 
 	return NULL;
 }
@@ -173,15 +173,15 @@ void* listenAcceptSocket() {
 		printf("\n>> Listening for incoming connections...");
 		SOCKADDR_IN_SIZE = sizeof(sockaddr_in);
 
-		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, 
-			(sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {
+		if ((THIS_CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, 
+			(sockaddr*)&THIS_CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {
 			int errorNumber = errno;
 			printf("\nAccept failed with error code: %d", errorNumber);
 			exit(1);
 		} 
 		printf("\nClient[%d] connected", NUM_CONNECT_CLIENTS);
 		// get host info from client, to eventually hand of to CLIENT2
-		getpeername(CLIENT[NUM_CONNECT_CLIENTS].sockfd, (sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, sizeof(sockaddr));
+		getpeername(THIS_CLIENT[NUM_CONNECT_CLIENTS].sockfd, (sockaddr*)&THIS_CLIENT[NUM_CONNECT_CLIENTS].protocols, sizeof(sockaddr));
 		++NUM_CONNECT_CLIENTS;
 		sockNum = NUM_CONNECT_CLIENTS - 1;
 
@@ -193,7 +193,7 @@ void* listenAcceptSocket() {
 		// exit if more than 2 clients attempt to connect
 		if (NUM_CONNECT_CLIENTS > 2) {
 				printf("\nMore than 2 clients connected. Disconnecting");						
-				close(CLIENT[NUM_CONNECT_CLIENTS-1].sockfd);				
+				close(THIS_CLIENT[NUM_CONNECT_CLIENTS-1].sockfd);				
 		}
 		pthread_create(&RECEIVE_THREAD[sockNum], NULL, &handleClients, (void*)&sockNum);
 	}
@@ -209,7 +209,7 @@ void* handleClients(void* sockNum) {
 		printf("\nReceiving TID: %ld", RECEIVE_THREAD[id]);
 		memset(MAIN_SERVER.receive_msg_buff, 0, sizeof(MAIN_SERVER.receive_msg_buff));
 		printf("\nWaiting for public key from first client...");
-		bytesReceived = recv(CLIENT[id].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
+		bytesReceived = recv(THIS_CLIENT[id].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
 		printf("\nMessage received: %s", MAIN_SERVER.receive_msg_buff);
 		if (/*Recieved prime numbers 'p' and 'q' are valid*/ 1) {
 
@@ -220,7 +220,7 @@ void* handleClients(void* sockNum) {
 		}
 		else {
 			char* msg = "\nINVALID";
-			send(CLIENT[id].sockfd, msg, strlen(msg), 0);
+			send(THIS_CLIENT[id].sockfd, msg, strlen(msg), 0);
 			continue;
 		}
 		// generate private key and send to CLIENT1
@@ -232,7 +232,7 @@ void* handleClients(void* sockNum) {
 			 string in the format "KEY n e" 
 			 *********************************************************/
 			
-			send(CLIENT[abs(id - 1)].sockfd, private_key, strlen(private_key), 0);
+			send(THIS_CLIENT[abs(id - 1)].sockfd, private_key, strlen(private_key), 0);
 
 			/*********************************************************
 			 follow up message with another message containing 
@@ -242,12 +242,12 @@ void* handleClients(void* sockNum) {
 		// if there's not 2 clients connected, signal client to disconnect with '0'
 		else {
 			char* msg = '0';
-			send(CLIENT[id].sockfd, msg, strlen(msg), 0);
+			send(THIS_CLIENT[id].sockfd, msg, strlen(msg), 0);
 			--NUM_CONNECT_CLIENTS;
 			return NULL;
 		}
 		MAIN_SERVER.receive_msg_buff[bytesReceived] = '\0';
-		printf("\n%s: %s", CLIENT[id].name, MAIN_SERVER.receive_msg_buff);
+		printf("\n%s: %s", THIS_CLIENT[id].name, MAIN_SERVER.receive_msg_buff);
 		pthread_mutex_unlock(&RECEIVE_MUTEX);
 	}
 	return NULL;
