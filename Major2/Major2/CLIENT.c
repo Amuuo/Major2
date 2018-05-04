@@ -74,6 +74,7 @@ Client          THAT_CLIENT;
 Client          THIS_CLIENT_SERVER;
 Client          THAT_CLIENT_SERVER;
 Server          MAIN_SERVER;
+int             INTPAIR[2];
 
 //=================================================================
 //                            M A I N
@@ -163,9 +164,15 @@ void* receiving() {
 			printf("\nReceived '0' from server, closing socket");
 			close(THIS_CLIENT.sockfd);
 		}
-		else if (THIS_CLIENT.receive_msg_buff[0] == 'K' && 
-			  THIS_CLIENT.receive_msg_buff[1] == 'E' && 
-			   THIS_CLIENT.receive_msg_buff[2] == 'Y') {
+		else if (strcmp(THIS_CLIENT.receive_msg_buff, "KEY")) {
+			if ((recv(MAIN_SERVER.sockfd, (int*)INTPAIR, sizeof(int) * 2, 0)) < 0) {
+				printf("\n>> Did not receive public key from MAIN_SERVER, Error: %d", errno);
+				close(MAIN_SERVER.sockfd);
+				exit(1);
+			}
+			printf("\n>> Received public key from MAIN_SERVER: %d, %d", INTPAIR[0], INTPAIR[1]);
+			/*  THIS_CLIENT.receive_msg_buff[1] == 'E' && 
+			   THIS_CLIENT.receive_msg_buff[2] == 'Y') {			
 			int i;
 			int j = 0;
 			int k = 0;
@@ -182,7 +189,7 @@ void* receiving() {
 					received[j][k] = THIS_CLIENT.receive_msg_buff[i];
 					++k;
 				}
-			}
+			}*/
 			sleep(1);
 			connectToClientServer();
 		}
@@ -191,11 +198,11 @@ void* receiving() {
 			   THIS_CLIENT.receive_msg_buff[2] == 'n') {
 			char* tmp;
 			char* tmp2;
-			int tmpPair[2];
+			
 			printf("\nEnter prime numbers <p q>: ");
-			scanf("%d%d", &tmpPair[0], &tmpPair[1]);			
+			scanf("%d%d", &INTPAIR[0], &INTPAIR[1]);			
 
-			if ((send(MAIN_SERVER.sockfd, tmpPair, sizeof(int) * 2, 0)) < 0) {
+			if ((send(MAIN_SERVER.sockfd, INTPAIR, sizeof(int) * 2, 0)) < 0) {
 				printf("\nTHIS_CLIENT failed to send intPair to MAIN_SERVER, Error: %d", errno);
 				close(MAIN_SERVER.sockfd);
 				exit(7);

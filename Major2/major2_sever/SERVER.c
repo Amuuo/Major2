@@ -55,6 +55,8 @@ void  bindSocket();
 void* listenAcceptSocket();
 void* handleClients(void*);
 void  initializeMutexes();
+void  createPublicKey();
+void  createPrivateKey();
 
 //======================================
 //          GLOBAL VARIABLES
@@ -77,7 +79,7 @@ server       MAIN_SERVER;
 char*        HOSTNAME;
 int          NUM_CONNECT_CLIENTS = 0;
 int          SOCKADDR_IN_SIZE;
-int          intPair[2];
+int          INTPAIR[2];
 
 //=================================================================
 //                            M A I N
@@ -207,30 +209,38 @@ void* handleClients(void* sockNum) {
 		// send CLIENT[0] a msg to send back 2 prime numbers
 		strcpy(MAIN_SERVER.send_msg_buff, "Send 2 prime numbers (p,q)");
 		if ((send(CLIENT[0].sockfd, MAIN_SERVER.send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
-			printf("\nFailed to send message \"%s\" to CLIENT[0]", MAIN_SERVER.send_msg_buff);
+			printf("\n>> Failed to send message \"%s\" to CLIENT[0]", MAIN_SERVER.send_msg_buff);
 			printf(", Error: %d", errno);
 			exit(2);
 		}
-		bytesReceived = recv(CLIENT[0].sockfd, intPair, sizeof(int)*2, 0);
-		printf("\Primes received: %s", MAIN_SERVER.receive_msg_buff);
+		bytesReceived = recv(CLIENT[0].sockfd, (int*)INTPAIR, sizeof(int)*2, 0);
+		printf("\>> Primes received: %d, %d", INTPAIR[0], INTPAIR[1]);
 
 			
-		while (/*Recieved prime numbers 'p' and 'q' are not valid*/ 1) {
-			char* msg = "\nINVALID";
-			send(CLIENT[0].sockfd, msg, strlen(msg), 0);
-			continue;
-		}
+		//while (/*Recieved prime numbers 'p' and 'q' are not valid*/ 1) {
+		//	char* msg = "\nINVALID";
+		//	send(CLIENT[0].sockfd, msg, strlen(msg), 0);
+		//	continue;
+		//}
 		/********************************************************************
 		generate public key (n,d), send to CLIENT[1], format: "KEY n d"
 		place result in MAIN_SERVER.send_msg_buff
 		*********************************************************************/
+		char* tmp = "KEY ";
+		char* tmp2;
+		char* tmp3;
+		itoa(INTPAIR[0], tmp2, sizeof(int));
+		itoa(INTPAIR[1], tmp3, sizeof(int));
+		strcat(tmp, tmp2);
+		strcat(tmp, tmp3);
+
 		if ((send(CLIENT[1].sockfd, MAIN_SERVER.send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
-			printf("\nMAIN_SERVER failed to send private key to CLIENT[1], Error: %d", errno);
+			printf("\n>> MAIN_SERVER failed to send private key to CLIENT[1], Error: %d", errno);
 			close(CLIENT[0].sockfd);
 			close(CLIENT[1].sockfd);
 			exit(1);
 		}
-		printf("\nMAIN_SERVER sent public key to CLIENT[1]");
+		printf("\n>> MAIN_SERVER sent public key to CLIENT[1]");
 
 		/*******************************************************
 		 follow up message with another message containing 
@@ -251,7 +261,7 @@ void* handleClients(void* sockNum) {
 		// intPair[0] = e
 		// intPair[1] = n
 		
-		if ((send(CLIENT[0].sockfd, intPair, sizeof(int) * 2, 0)) < 0) {
+		if ((send(CLIENT[0].sockfd, INTPAIR, sizeof(int) * 2, 0)) < 0) {
 			printf("\nMAIN_SERVER failed to send private key to CLIENT[0], Error: %d", errno);
 			close(CLIENT[0].sockfd);
 			close(CLIENT[1].sockfd);
@@ -277,6 +287,14 @@ void initializeMutexes() {
 	pthread_mutex_init(&RECEIVE_MUTEX, NULL);
 	pthread_mutex_init(&SENDING_MUTEX, NULL);
 	return;
+}
+
+void createPublicKey() {
+
+}
+
+void createPrivateKey() {
+
 }
 
 
