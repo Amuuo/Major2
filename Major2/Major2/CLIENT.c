@@ -39,7 +39,11 @@ typedef struct {
 	char name[20];
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
+	int  int_pair[2];
 	unsigned int port;
+	unsigned int d;
+	unsigned int e;
+	unsigned int n;
 } Server;
 
 void* receiving();
@@ -73,10 +77,6 @@ Client          THAT_CLIENT;
 Client          THIS_CLIENT_SERVER;
 Client          THAT_CLIENT_SERVER;
 Server          MAIN_SERVER;
-unsigned int    P;
-unsigned int    Q;
-unsigned int    E;
-unsigned int    N;
 
 //=================================================================
 //                            M A I N
@@ -224,8 +224,7 @@ void* sending() {
 void* receiving() {
 	int bytesReceived;
 
-	while (1) {
-		printf("\nReceive TID: %ld", RECEIVE_THREAD);
+	while (1) {		
 		memset(THIS_CLIENT.receive_msg_buff, 0, sizeof(THIS_CLIENT.receive_msg_buff));
 
 		if ((bytesReceived = recv(MAIN_SERVER.sockfd, THIS_CLIENT.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0)) > 0) {
@@ -235,6 +234,26 @@ void* receiving() {
 		if (THIS_CLIENT.receive_msg_buff == '0') {
 			printf("\nReceived '0' from server, closing socket");
 			close(THIS_CLIENT.sockfd);
+		}
+		else if (THIS_CLIENT.receive_msg_buff[0] == 'K' && THIS_CLIENT.receive_msg_buff[1] == 'E' && THIS_CLIENT.receive_msg_buff[2] == 'Y') {
+			sleep(1);
+			connectToClientServer();
+		}
+		else if (THIS_CLIENT.receive_msg_buff[0] == 'S' && THIS_CLIENT.receive_msg_buff[1] == 'e' && THIS_CLIENT.receive_msg_buff[2] == 'n') {
+			char* tmp, tmp2;
+			int tmpPair[2];
+			printf("\nEnter prime numbers <p q>: ");
+			scanf("%s %s", tmp, tmp2);
+			tmpPair[0] = atoi(tmp);
+			tmpPair[1] = atoi(tmp2);
+			if ((send(MAIN_SERVER.sockfd, tmpPair, sizeof(int) * 2, 0)) < 0) {
+				printf("\nTHIS_CLIENT failed to send intPair to MAIN_SERVER, Error: %d", errno);
+				close(MAIN_SERVER.sockfd);
+				exit(7);
+			}
+			printf("\nTHIS_SERVER sent prime numbers to MAIN_SERVER");
+			printf("\nSetting up as server");
+			setupAsServer();
 		}
 	}
 
