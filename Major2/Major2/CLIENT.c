@@ -25,6 +25,7 @@ typedef struct {
 	char name[20];
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
+	int  receive_encrypted_buff[MSG_BUFF_LENGTH];
 	unsigned int port;	
 	unsigned int d;
 	unsigned int e;
@@ -53,6 +54,8 @@ void  setupAsSever();
 void  connectToClientServer();
 char  decrypt(int);
 void  encrypt(char*);
+void  receiveEncryptedMsg();
+void  sendEncryptedMsg();
 
 //======================================
 //          GLOBAL VARIABLES
@@ -258,16 +261,9 @@ void connectToClientServer() {
 		printf("\nCould not connect with CLIENT2, Error: %d", errorNum);
 		exit(2);
 	}
-	int bytesReceived;
-	memset(THIS_CLIENT.receive_msg_buff, 0, MSG_BUFF_LENGTH);
-	if (bytesReceived = (revc(THAT_CLIENT_SERVER.sockfd, THIS_CLIENT.receive_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
-		printf("\nTHIS_CLIENT failed to receive message from THAT_CLIENT_SERVER, Error: %d", errno);
-		printf("\nExiting...");
-		exit(3);
-	}
-	printf("\nReceived message from THAT_CLIENT_SERVER");
-	THIS_CLIENT.receive_msg_buff[bytesReceived] = '\0';
+
 	
+	/*
 	int i;
 	int j = 0;
 	int k = 0;
@@ -285,6 +281,7 @@ void connectToClientServer() {
 			++k;
 		}
 	}
+	*/
 	memset(THIS_CLIENT.receive_msg_buff, 0, MSG_BUFF_LENGTH);
 	char tmp;
 	for (i = 0; i < j; ++j) {
@@ -307,4 +304,20 @@ void encrypt(char* msg) {
 	      Encryption algorithm goes here
 	 ******************************************/
 	return;
+}
+
+void receiveEncryptedMsg() {
+	int bytesReceived;
+	memset(THIS_CLIENT.receive_encrypted_buff, 0, MSG_BUFF_LENGTH*sizeof(int));
+	if (bytesReceived = (revc(THAT_CLIENT_SERVER.sockfd, THIS_CLIENT.receive_encrypted_buff, MSG_BUFF_LENGTH*sizeof(int), 0)) < 0) {
+		printf("\nTHIS_CLIENT failed to receive message from THAT_CLIENT_SERVER, Error: %d", errno);
+		printf("\nExiting...");
+		exit(3);
+	}
+	printf("\nReceived encrypted message from THAT_CLIENT_SERVER");
+	int i;
+	for (i = 0; i < (bytesReceived / 4); ++i) {
+		printf("%c", decrypt(THIS_CLIENT.receive_encrypted_buff[i]));
+	}
+	
 }
