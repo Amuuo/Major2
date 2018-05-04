@@ -27,6 +27,7 @@ typedef struct sockaddr sockaddr;
 typedef struct {
 	SOCKET sockfd;
 	sockaddr_in protocols;
+	sockaddr_in that_client_protocols;
 	char name[NAME_SIZE];
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
@@ -62,6 +63,8 @@ void  initializeMutexes();
 
 pthread_mutex_t RECEIVE_MUTEX;
 pthread_mutex_t SENDING_MUTEX;
+pthread_cond_t  RECEIVE_CONDITION;
+pthread_cond_t  SENDING_CONDITION;
 pthread_t    LISTEN_THREAD;
 pthread_t    COMMUNICATE_THREAD;
 pthread_t    RECEIVE_THREAD[2];
@@ -70,7 +73,7 @@ pthread_t    SEND_NAME_THREAD;
 pthread_t    GET_NAME_THREAD;
 pthread_t    SWAP_THREAD;
 hostent*     HOST;
-client*      THIS_CLIENT = NULL;
+client*      CLIENT = NULL;
 server       MAIN_SERVER;
 char*        HOSTNAME;
 int          NUM_CONNECT_CLIENTS = 0;
@@ -96,8 +99,8 @@ int main(int argc, char* argv[]) {
 	//communicate();
 
 	close(MAIN_SERVER.sockfd);
-	close(THIS_CLIENT[0].sockfd);
-	close(THIS_CLIENT[1].sockfd);
+	close(CLIENT[0].sockfd);
+	close(CLIENT[1].sockfd);
 
 	return 0;
 }
@@ -106,8 +109,7 @@ int main(int argc, char* argv[]) {
 
 void createSocket() {
 	if ((MAIN_SERVER.sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		int err = errno;
-		printf("\nCount not create socket : %d", err);
+		printf("\nCount not create socket : %d", errno);
 		exit(1);
 	} 
 	printf("\n>> Socket created.");
@@ -139,21 +141,20 @@ void* sendMyName(void* sockNum) {
 	unsigned int id = *((int*)sockNum);
 	unsigned int nameSize = sizeof(MAIN_SERVER.name);
 
-	send(THIS_CLIENT[id].sockfd, MAIN_SERVER.name, nameSize, 0);
+	send(CLIENT[id].sockfd, MAIN_SERVER.name, nameSize, 0);
 
 	return NULL;
 }
 void* getClientName(void* sockNum) {
 	unsigned int id = *((int*)sockNum);	
-	recv(THIS_CLIENT[id].sockfd, THIS_CLIENT[id].name, NAME_SIZE, 0);
-	THIS_CLIENT[id].name[strlen(THIS_CLIENT[id].name)] = '\0';
+	recv(CLIENT[id].sockfd, CLIENT[id].name, NAME_SIZE, 0);
+	CLIENT[id].name[strlen(CLIENT[id].name)] = '\0';
 
 	return NULL;
 }
 void bindSocket() {
-	if ((bind(MAIN_SERVER.sockfd, (sockaddr*)&MAIN_SERVER.protocols, sizeof(MAIN_SERVER.protocols))) < 0) {
-		int errorNumber = errno;
-		printf("\nBind failed with error code: %d", errorNumber);
+	if ((bind(MAIN_SERVER.sockfd, (sockaddr*)&MAIN_SERVER.protocols, sizeof(MAIN_SERVER.protocols))) < 0) {		
+		printf("\nBind failed with error code: %d", errno);
 		exit(1);
 	}
 	printf("\n>> Bind Succeeded");
@@ -164,24 +165,22 @@ void* listenAcceptSocket() {
 	unsigned int sockNum;
 	while (NUM_CONNECT_CLIENTS < 2) {
 
-		if ((listen(MAIN_SERVER.sockfd, 2)) < 0) {
-			int errorNumber = errno;
-			printf("\n>> Listen failed, Error: %d", errorNumber);
+		if ((listen(MAIN_SERVER.sockfd, 2)) < 0) {			
+			printf("\n>> Listen failed, Error: %d", errno);
 			exit(1);
 		}
 
 		printf("\n>> Listening for incoming connections...");
 		SOCKADDR_IN_SIZE = sizeof(sockaddr_in);
 
-		if ((THIS_CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, 
-			(sockaddr*)&THIS_CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {
-			int errorNumber = errno;
-			printf("\nAccept failed with error code: %d", errorNumber);
+		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, 
+			(sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {			
+			printf("\nAccept failed with error code: %d", errno);
 			exit(1);
 		} 
 		printf("\nClient[%d] connected", NUM_CONNECT_CLIENTS);
 		// get host info from client, to eventually hand of to CLIENT2
-		getpeername(THIS_CLIENT[NUM_CONNECT_CLIENTS].sockfd, (sockaddr*)&THIS_CLIENT[NUM_CONNECT_CLIENTS].protocols, sizeof(sockaddr));
+		//getpeername(CLIENT[NUM_CONNECT_CLIENTS].sockfd, (sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, sizeof(sockaddr));
 		++NUM_CONNECT_CLIENTS;
 		sockNum = NUM_CONNECT_CLIENTS - 1;
 
@@ -193,7 +192,7 @@ void* listenAcceptSocket() {
 		// exit if more than 2 clients attempt to connect
 		if (NUM_CONNECT_CLIENTS > 2) {
 				printf("\nMore than 2 clients connected. Disconnecting");						
-				close(THIS_CLIENT[NUM_CONNECT_CLIENTS-1].sockfd);				
+				close(CLIENT[NUM_CONNECT_CLIENTS-1].sockfd);				
 		}
 		pthread_create(&RECEIVE_THREAD[sockNum], NULL, &handleClients, (void*)&sockNum);
 	}
@@ -209,7 +208,7 @@ void* handleClients(void* sockNum) {
 		printf("\nReceiving TID: %ld", RECEIVE_THREAD[id]);
 		memset(MAIN_SERVER.receive_msg_buff, 0, sizeof(MAIN_SERVER.receive_msg_buff));
 		printf("\nWaiting for public key from first client...");
-		bytesReceived = recv(THIS_CLIENT[id].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
+		bytesReceived = recv(CLIENT[id].sockfd, MAIN_SERVER.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0);
 		printf("\nMessage received: %s", MAIN_SERVER.receive_msg_buff);
 		if (/*Recieved prime numbers 'p' and 'q' are valid*/ 1) {
 
@@ -220,7 +219,7 @@ void* handleClients(void* sockNum) {
 		}
 		else {
 			char* msg = "\nINVALID";
-			send(THIS_CLIENT[id].sockfd, msg, strlen(msg), 0);
+			send(CLIENT[id].sockfd, msg, strlen(msg), 0);
 			continue;
 		}
 		// generate private key and send to CLIENT1
@@ -232,7 +231,7 @@ void* handleClients(void* sockNum) {
 			 string in the format "KEY n e" 
 			 *********************************************************/
 			
-			send(THIS_CLIENT[abs(id - 1)].sockfd, private_key, strlen(private_key), 0);
+			send(CLIENT[abs(id - 1)].sockfd, private_key, strlen(private_key), 0);
 
 			/*********************************************************
 			 follow up message with another message containing 
@@ -242,12 +241,12 @@ void* handleClients(void* sockNum) {
 		// if there's not 2 clients connected, signal client to disconnect with '0'
 		else {
 			char* msg = '0';
-			send(THIS_CLIENT[id].sockfd, msg, strlen(msg), 0);
+			send(CLIENT[id].sockfd, msg, strlen(msg), 0);
 			--NUM_CONNECT_CLIENTS;
 			return NULL;
 		}
 		MAIN_SERVER.receive_msg_buff[bytesReceived] = '\0';
-		printf("\n%s: %s", THIS_CLIENT[id].name, MAIN_SERVER.receive_msg_buff);
+		printf("\n%s: %s", CLIENT[id].name, MAIN_SERVER.receive_msg_buff);
 		pthread_mutex_unlock(&RECEIVE_MUTEX);
 	}
 	return NULL;

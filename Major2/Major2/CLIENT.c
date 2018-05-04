@@ -25,7 +25,7 @@ typedef struct {
 	char name[20];
 	char send_msg_buff[MSG_BUFF_LENGTH];
 	char receive_msg_buff[MSG_BUFF_LENGTH];
-	int  receive_encrypted_buff[MSG_BUFF_LENGTH];
+	int  encrypted_buff[MSG_BUFF_LENGTH];
 	unsigned int port;	
 	unsigned int d;
 	unsigned int e;
@@ -68,6 +68,7 @@ pthread_t       SEND_NAME_THREAD;
 pthread_t       GET_NAME_THREAD;
 pthread_mutex_t MUTEX;
 Client          THIS_CLIENT;
+Client          THAT_CLIENT;
 Client          THIS_CLIENT_SERVER;
 Client          THAT_CLIENT_SERVER;
 Server          MAIN_SERVER;
@@ -327,8 +328,10 @@ void sendEncryptedMsg() {
 	char* msg;
 	printf("\nMessage: ");
 	scanf("%s", msg);
+	memset(THIS_CLIENT_SERVER.encrypted_buff, 0, MSG_BUFF_LENGTH * sizeof(int));
 	int i;
 	for (i = 0; i < strlen(msg); ++i) {
-
+		// THIS_CLIENT_SERVER.encrypted_buff[i] = encrypt(msg[i]);
 	}
+	if ((send(THAT_CLIENT)
 }
