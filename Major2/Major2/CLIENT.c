@@ -52,6 +52,7 @@ void  communicate();
 void  setupAsSever();
 void  connectToClientServer();
 char  decrypt(int);
+void  encrypt(char*);
 
 //======================================
 //          GLOBAL VARIABLES
@@ -299,4 +300,11 @@ char decrypt(int tmp) {
 	      Decryption algorithm goes here
 	 ******************************************/
 	return letter;
+}
+
+void encrypt(char* msg) {
+	/******************************************
+	      Encryption algorithm goes here
+	 ******************************************/
+	return;
 }
