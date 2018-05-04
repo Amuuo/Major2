@@ -47,7 +47,6 @@ typedef struct {
 	unsigned int e;
 } server;
 
-void*  swapNames(void*);
 void* sendMyName(void*);
 void* getClientName(void*);
 void  createSocket();
@@ -73,7 +72,7 @@ pthread_t    SEND_NAME_THREAD;
 pthread_t    GET_NAME_THREAD;
 pthread_t    SWAP_THREAD;
 hostent*     HOST;
-client*      CLIENT = NULL;
+client       CLIENT[2];
 server       MAIN_SERVER;
 char*        HOSTNAME;
 int          NUM_CONNECT_CLIENTS = 0;
@@ -132,15 +131,6 @@ void setupProtocols() {
 
 	return;
 }
-void* swapNames(void* sockNum) {
-	pthread_create(&GET_NAME_THREAD, NULL, &getClientName, sockNum);
-	pthread_create(&SEND_NAME_THREAD, NULL, &sendMyName, sockNum);
-	pthread_join(GET_NAME_THREAD, NULL);
-	pthread_join(SEND_NAME_THREAD, NULL);
-
-	return NULL;
-}
-
 void* sendMyName(void* sockNum) {
 	unsigned int id = *((int*)sockNum);
 	unsigned int nameSize = sizeof(MAIN_SERVER.name);
@@ -177,8 +167,7 @@ void* listenAcceptSocket() {
 		printf("\n>> Listening for incoming connections...");
 		SOCKADDR_IN_SIZE = sizeof(sockaddr_in);
 
-		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, 
-			(sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {			
+		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, (sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {			
 			printf("\nAccept failed with error code: %d", errno);
 			exit(1);
 		} 
@@ -188,10 +177,7 @@ void* listenAcceptSocket() {
 		++NUM_CONNECT_CLIENTS;
 		sockNum = NUM_CONNECT_CLIENTS - 1;
 
-		pthread_create(&SWAP_THREAD, NULL, &swapNames, (void*)&sockNum);
-		pthread_join(SWAP_THREAD, NULL);
 		printf("\n>> Connection accepted.\n\n");
-
 
 		// exit if more than 2 clients attempt to connect
 		if (NUM_CONNECT_CLIENTS > 2) {
