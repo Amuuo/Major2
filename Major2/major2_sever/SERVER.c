@@ -103,10 +103,6 @@ int main(int argc, char* argv[]) {
 	//swapNames();
 	//communicate();
 
-	close(MAIN_SERVER.sockfd);
-	close(CLIENT[0].sockfd);
-	close(CLIENT[1].sockfd);
-
 	return 0;
 }
 //=================================================================
@@ -300,10 +296,11 @@ void* handleClients(void* sockNum) {
 		close(CLIENT[1].sockfd);
 		exit(1);
 	}
+	
 	printf("\n>> Closing connection with CLIENT[0]");
-	close(CLIENT[0].sockfd);
+	//close(CLIENT[0].sockfd);
 	printf("\n>> Closing connection with CLIENT[1]");
-	close(CLIENT[1].sockfd);
+	//close(CLIENT[1].sockfd);
 
 	pthread_mutex_unlock(&RECEIVE_MUTEX);
 	

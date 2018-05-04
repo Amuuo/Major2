@@ -270,9 +270,11 @@ void encrypt(char* msg) {
 
 void receiveEncryptedMsg() {
 	int bytesReceived;
+	printf("\n\n\t *****NO DECRYPTION FUNCTION YET. HELP!******");
+	printf("\n\n>> Exiting just before receiveEncryptedMsg() runs its loop\n\n\n");
+	exit(1);
 	while (1) {
-		printf("\nNo decryption functions yet. HELP!");
-		/*placeholder to keep the loop from rolling*/char m; scanf("%c", &m);
+		
 		memset(THIS_CLIENT.encrypted_buff, 0, MSG_BUFF_LENGTH * sizeof(int));
 		if (bytesReceived = (recv(THAT_CLIENT_SERVER.sockfd, THIS_CLIENT.encrypted_buff, MSG_BUFF_LENGTH * sizeof(int), 0)) < 0) {
 			printf("\n>> Failed to receive message from THAT_CLIENT_SERVER, Error: %d", errno);
@@ -289,9 +291,9 @@ void receiveEncryptedMsg() {
 
 void sendEncryptedMsg() {
 	char* msg;
-	printf("\nNo encryption functions yet. HELP!");
-	/*placeholder to keep the loop from rolling*/
-	char m; scanf("%c", &m);
+	printf("\n\n\t *****NO ENCRYPTION FUNCTION YET. HELP!*****");
+	printf("\n\n >> Exiting just before sendEncryptedMsg function\n\n\n");
+	exit(1);
 	while (1) {
 		printf("\n\nMessage: ");
 		scanf("%s", msg);
