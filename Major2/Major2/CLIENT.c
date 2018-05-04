@@ -47,7 +47,7 @@ void  setupProtocols(char*);
 void  connectSocket();
 void  communicate();
 void  setupAsSever();
-void  connectToClient2();
+void  connectToClient1();
 
 //======================================
 //          GLOBAL VARIABLES
@@ -77,17 +77,18 @@ int main(int argc, char* argv[]) {
 		printf("\nUsage: <server hostname> <server port#> <client name>");
 		exit(1);
 	}
-	MAIN_SERVER.port = atoi(argv[2]);
-	strcpy(CLIENT.name, argv[3]);
+	while (1) {
+		MAIN_SERVER.port = atoi(argv[2]);
+		strcpy(CLIENT.name, argv[3]);
 
-	createSocket();
-	setupProtocols(argv[1]);
-	connectSocket();
-	swapNames();
-	communicate();
+		createSocket();
+		setupProtocols(argv[1]);
+		connectSocket();
+		swapNames();
+		communicate();
 
-	close(MAIN_SERVER.sockfd);
-
+		close(MAIN_SERVER.sockfd);
+	}
 	return 0;
 }
 //=================================================================
@@ -189,7 +190,10 @@ void* sending() {
 			recv(MAIN_SERVER.sockfd, (sockaddr*)tmpAddr, sizeof(sockaddr), 0);
 			CLIENT2.protocols = *tmpAddr;
 			sleep(1);
-			connectToClient2();
+			connectToClient1();
+		}
+		else {
+			setupAsServer();
 		}
 		memset(message, 0, sizeof(message));
 	}
@@ -220,7 +224,7 @@ void setupAsSever() {
 	return;
 }
 
-void connectToClient2() {
+void connectToClient1() {
 	int check;
 	if ((connect(CLIENT2.sockfd, (sockaddr*)&CLIENT2.protocols, sizeof(CLIENT2.protocols))) < 0) {
 		int errorNum = errno;

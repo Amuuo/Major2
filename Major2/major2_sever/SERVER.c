@@ -171,7 +171,7 @@ void* listenAcceptSocket() {
 		}
 
 		printf("\n>> Listening for incoming connections...");
-		SOCKADDR_IN_SIZE = sizeof(struct sockaddr_in);
+		SOCKADDR_IN_SIZE = sizeof(sockaddr_in);
 
 		if ((CLIENT[NUM_CONNECT_CLIENTS].sockfd = accept(MAIN_SERVER.sockfd, 
 			(sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, &SOCKADDR_IN_SIZE)) < 0) {
@@ -179,6 +179,7 @@ void* listenAcceptSocket() {
 			printf("\nAccept failed with error code: %d", errorNumber);
 			exit(1);
 		} 
+		printf("\nClient[%d] connected", NUM_CONNECT_CLIENTS);
 		// get host info from client, to eventually hand of to CLIENT2
 		getpeername(CLIENT[NUM_CONNECT_CLIENTS].sockfd, (sockaddr*)&CLIENT[NUM_CONNECT_CLIENTS].protocols, sizeof(sockaddr));
 		++NUM_CONNECT_CLIENTS;
@@ -191,18 +192,14 @@ void* listenAcceptSocket() {
 
 		// exit if more than 2 clients attempt to connect
 		if (NUM_CONNECT_CLIENTS > 2) {
-			printf("\nMore than 2 clients connected. Exiting");
-			int i;
-			for (i = 0; i < 3; ++i) {
-				close(CLIENT[i].sockfd);
-			}
-			exit(2);
+				printf("\nMore than 2 clients connected. Disconnecting");						
+				close(CLIENT[NUM_CONNECT_CLIENTS-1].sockfd);				
 		}
 		pthread_create(&RECEIVE_THREAD[sockNum], NULL, &handleClients, (void*)&sockNum);
 	}
-
 	return NULL;
 }
+
 void* handleClients(void* sockNum) {
 	unsigned int bytesReceived;
 	unsigned int id = *((int*)sockNum);
