@@ -200,6 +200,7 @@ void* sending() {
 		}
 		if (received[0] == "KEY") {
 			sockaddr_in* tmpAddr;
+			// get sockaddr_in details about the other client
 			recv(MAIN_SERVER.sockfd, (sockaddr*)tmpAddr, sizeof(sockaddr), 0);
 			THAT_CLIENT_SERVER.protocols = *tmpAddr;
 			THIS_CLIENT.d = atoi(received[1]);
