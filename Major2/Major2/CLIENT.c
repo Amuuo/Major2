@@ -35,6 +35,7 @@ typedef struct {
 
 typedef struct {
 	SOCKET sockfd;
+	SOCKET sockfd_msg;
 	sockaddr_in protocols;
 	char name[20];
 	char send_msg_buff[MSG_BUFF_LENGTH];
@@ -56,6 +57,7 @@ char  decrypt(int);
 void  encrypt(char*);
 void  receiveEncryptedMsg();
 void  sendEncryptedMsg();
+void* MessagesFromServer();
 
 //======================================
 //          GLOBAL VARIABLES
@@ -79,6 +81,11 @@ Server          MAIN_SERVER;
 int main(int argc, char* argv[]) {
 
 	pthread_mutex_init(&MUTEX, NULL);
+
+	printf("\n=========================================");
+	printf("\n             C L I E N T  %c", argv[3][6]);
+	printf("\n=========================================");
+
 	if (argc < 4) {
 		printf("\nUsage: <server hostname> <server port#> <client name>");
 		exit(1);
@@ -129,38 +136,44 @@ void* receiving() {
 	int bytesReceived;
 
 	while (1) {		
-		memset(THIS_CLIENT.receive_msg_buff, 0, sizeof(THIS_CLIENT.receive_msg_buff));
+		do {
+			memset(THIS_CLIENT.receive_msg_buff, 0, sizeof(THIS_CLIENT.receive_msg_buff));
 
-		if ((bytesReceived = recv(MAIN_SERVER.sockfd, THIS_CLIENT.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0)) < 0) {
-			printf("\n>> THIS_SERVER failed to get message from MAIN_SERVER\n, Error: %d", errno);
-			close(MAIN_SERVER.sockfd);
-			exit(1);
-		}		
-		THIS_CLIENT.receive_msg_buff[bytesReceived] = '\0';
-		printf("\n>> MAIN_SERVER: %s", THIS_CLIENT.receive_msg_buff);
-		
-		if (THIS_CLIENT.receive_msg_buff == "0") {
-			printf("\nReceived '0' from server, closing socket");
-			close(THIS_CLIENT.sockfd);
-		}
-		else if (THIS_CLIENT.receive_msg_buff[0] == 'S' && 
-			  THIS_CLIENT.receive_msg_buff[1] == 'e' && 
-			   THIS_CLIENT.receive_msg_buff[2] == 'n') {
-			
-			memset(&THIS_CLIENT.primes, NULL, sizeof(int) * 2);
-			printf("\n\nEnter prime numbers <p q>: ");
-			scanf("%d%d", &THIS_CLIENT.primes[0], &THIS_CLIENT.primes[1]);			
-
-			if ((send(MAIN_SERVER.sockfd, THIS_CLIENT.primes, sizeof(int) * 2, 0)) < 0) {
-				printf("\n>> THIS_CLIENT failed to send intPair to MAIN_SERVER, Error: %d", errno);
+			if ((bytesReceived = recv(MAIN_SERVER.sockfd, THIS_CLIENT.receive_msg_buff, MSG_BUFF_LENGTH - 1, 0)) < 0) {
+				printf("\n>> THIS_SERVER failed to get message from MAIN_SERVER\n, Error: %d", errno);
 				close(MAIN_SERVER.sockfd);
-				exit(7);
+				exit(1);
+			}		
+			printf("\n>> MAIN_SERVER: %s", THIS_CLIENT.receive_msg_buff);
+		
+			if (THIS_CLIENT.receive_msg_buff == "0") {
+				printf("\nReceived '0' from server, closing socket");
+				close(THIS_CLIENT.sockfd);
 			}
-			printf("\n>> Sent prime numbers to MAIN_SERVER");
+			else if (THIS_CLIENT.receive_msg_buff[0] == 'S' && 
+				  THIS_CLIENT.receive_msg_buff[1] == 'e' && 
+				   THIS_CLIENT.receive_msg_buff[2] == 'n') {
+			
+			
+				memset(&THIS_CLIENT.primes, NULL, sizeof(int) * 2);
+				printf("\n\nEnter prime numbers <p q>: ");
+				scanf("%d%d", &THIS_CLIENT.primes[0], &THIS_CLIENT.primes[1]);
+
+				if ((send(MAIN_SERVER.sockfd, THIS_CLIENT.primes, sizeof(int) * 2, 0)) < 0) {
+					printf("\n>> THIS_CLIENT failed to send intPair to MAIN_SERVER, Error: %d", errno);
+					close(MAIN_SERVER.sockfd);
+					exit(7);
+				}
+				printf("\n>> Sent prime numbers to MAIN_SERVER");
+				recv(MAIN_SERVER.sockfd, THIS_CLIENT.receive_msg_buff, MSG_BUFF_LENGTH, 0);
+				//THIS_CLIENT.receive_msg_buff[strlen(THIS_CLIENT.receive_msg_buff)] = '\0';
+			
+		} while (!memcmp(THIS_CLIENT.receive_msg_buff, "Accepted", strlen("Accepted")));
+			
 			printf("\n>> Setting up as server");
 			setupAsSever();
 		}
-		else if (strcmp(THIS_CLIENT.receive_msg_buff, "KEY")) {
+		else if (memcmp(THIS_CLIENT.receive_msg_buff, "KEY", strlen("KEY"))) {
 			if ((recv(MAIN_SERVER.sockfd, (int*)THIS_CLIENT.primes, sizeof(int) * 2, 0)) < 0) {
 				printf("\n>> Did not receive public key from MAIN_SERVER, Error: %d", errno);
 				close(MAIN_SERVER.sockfd);
@@ -243,7 +256,7 @@ void connectToClientServer() {
 	}
 	printf("\n>> New socket created at port %d", THAT_CLIENT_SERVER.protocols.sin_port);
 
-	if ((connect(THAT_CLIENT_SERVER.sockfd, (sockaddr*)&THAT_CLIENT_SERVER.protocols, sizeof(sockaddr))) < 0) {
+	if ((connect(THAT_CLIENT_SERVER.sockfd, (sockaddr_in*)&THAT_CLIENT_SERVER.protocols, sizeof(sockaddr))) < 0) {
 		int errorNum = errno;
 		printf("\n>> Could not connect with THAT_CLIENT_SERVER, Error: %d", errorNum);
 		exit(2);
@@ -309,4 +322,11 @@ void sendEncryptedMsg() {
 			printf("\n>> Encrypted message sent to THAT_CLIENT");
 		}
 	}
+}
+
+void * MessagesFromServer() {
+	while (1) {
+		
+	}
+	return NULL;
 }

@@ -33,7 +33,7 @@ typedef struct {
 	char receive_msg_buff[MSG_BUFF_LENGTH];
 	char* hostname;
 	unsigned int port;
-} client;
+} Client;
 
 typedef struct {
 	SOCKET sockfd;
@@ -45,7 +45,7 @@ typedef struct {
 	unsigned int n;
 	unsigned int d;
 	unsigned int e;
-} server;
+} Server;
 
 void  createSocket();
 void  setupProtocols();
@@ -73,8 +73,8 @@ pthread_t    SEND_NAME_THREAD;
 pthread_t    GET_NAME_THREAD;
 pthread_t    SWAP_THREAD;
 hostent*     HOST;
-client       CLIENT[2];
-server       MAIN_SERVER;
+Client       CLIENT[2];
+Server       MAIN_SERVER;
 char*        HOSTNAME;
 int          NUM_CONNECT_CLIENTS = 0;
 int          SOCKADDR_IN_SIZE;
@@ -88,6 +88,9 @@ int main(int argc, char* argv[]) {
 	pthread_cond_init(&RECEIVE_CONDITION, NULL);
 	pthread_cond_init(&LISTEN_CONDITION, NULL);
 
+	printf("\n=========================================");
+	printf("\n              S E R V E R");
+	printf("\n=========================================");
 	if (argc < 3) 
 		printf("\nUsage: <hostname> <port>...");
 	
@@ -174,7 +177,9 @@ void* listenAcceptSocket() {
 void* handleClients(void* sockNum) {
 	unsigned int bytesReceived;
 	unsigned int id = *((int*)sockNum);
-	
+	Client* tmpCli = malloc(sizeof(Client)*2);
+	memcpy(tmpCli, CLIENT, sizeof(Client) * 2);
+	memset(CLIENT, 0, sizeof(Client) * 2);
 	
 	//pthread_mutex_lock(&RECEIVE_MUTEX);
 	memset(MAIN_SERVER.receive_msg_buff, 0, MSG_BUFF_LENGTH);
@@ -183,19 +188,40 @@ void* handleClients(void* sockNum) {
 	printf("\n>> Waiting for public key from first client...");
 
 	// send CLIENT[0] a msg to send back 2 prime numbers
-	strcpy(MAIN_SERVER.send_msg_buff, "Send 2 prime numbers (p,q)\0");
-	if ((send(CLIENT[0].sockfd, MAIN_SERVER.send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
-		printf("\n>> Failed to send message \"%s\" to CLIENT[0]", MAIN_SERVER.send_msg_buff);
-		printf(", Error: %d", errno);
-		exit(2);
-	}
-	if ((bytesReceived = recv(CLIENT[0].sockfd, (int*)INTPAIR, sizeof(int) * 2, 0)) < 0) {
-		printf("\n>> Failed to receive prime numbers from CLIENT[0], Error: %d", errno);
-		close(CLIENT[0].sockfd);
-		close(CLIENT[1].sockfd);
+	do {
+		memset(INTPAIR, 0, sizeof(int) * 2);
+		strcpy(MAIN_SERVER.send_msg_buff, "Send 2 prime numbers (p,q)\0");
+		if ((send(tmpCli[0].sockfd, MAIN_SERVER.send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
+			printf("\n>> Failed to send message \"%s\" to CLIENT[0]", MAIN_SERVER.send_msg_buff);
+			printf(", Error: %d", errno);
+			exit(2);
+		}
+
+		if ((bytesReceived = recv(tmpCli[0].sockfd, (int*)INTPAIR, sizeof(int) * 2, 0)) < 0) {
+			printf("\n>> Failed to receive prime numbers from CLIENT[0], Error: %d", errno);
+			close(tmpCli[0].sockfd);
+			close(tmpCli[1].sockfd);
+			exit(1);
+		}
+		printf("\n>> Primes received from CLIENT[0]: %d, %d", INTPAIR[0], INTPAIR[1]);
+		if (INTPAIR[0] * INTPAIR[1] <= 128) {
+			printf("\n>> (%d * %d = %d)<= 128, DENIED", INTPAIR[0], INTPAIR[1], INTPAIR[0]*INTPAIR[1]);
+			printf("\n>> Sending CLIENT[0] message to resubmit");
+			memset(MAIN_SERVER.send_msg_buff, 0, MSG_BUFF_LENGTH);
+			strcpy(MAIN_SERVER.send_msg_buff, "Denied");
+			send(tmpCli[0].sockfd, MAIN_SERVER.send_msg_buff, MSG_BUFF_LENGTH, 0);
+		}
+	} while (INTPAIR[0] * INTPAIR[1] <= 128);
+	
+	memset(MAIN_SERVER.send_msg_buff, 0, MSG_BUFF_LENGTH);
+	memcpy(MAIN_SERVER.send_msg_buff, "Accepted", strlen("Accepted"));
+	if ((send(tmpCli[0].sockfd, MAIN_SERVER.send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
+		printf("\n>> Accepted messaged did not get send to CLIENT[0], Error: %d", errno);
+		close(tmpCli[0].sockfd);
+		close(tmpCli[1].sockfd);
 		exit(1);
 	}
-	printf("\n>> Primes received: %d, %d", INTPAIR[0], INTPAIR[1]);
+	printf("\n>> Accepted");
 
 			
 	//while (/*Recieved prime numbers 'p' and 'q' are not valid*/ 1) {
@@ -214,20 +240,20 @@ void* handleClients(void* sockNum) {
 	itoa(INTPAIR[1], tmp3, sizeof(int));
 	strcat(tmp, tmp2);
 	strcat(tmp, tmp3);*/
-	memset(CLIENT[1].send_msg_buff, 0, MSG_BUFF_LENGTH);
-	strcpy(CLIENT[1].send_msg_buff, "KEY");
+	memset(tmpCli[1].send_msg_buff, 0, MSG_BUFF_LENGTH);
+	strcpy(tmpCli[1].send_msg_buff, "KEY");
 
-	if ((send(CLIENT[1].sockfd, CLIENT[1].send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
+	if ((send(tmpCli[1].sockfd, tmpCli[1].send_msg_buff, MSG_BUFF_LENGTH, 0)) < 0) {
 		printf("\n>> MAIN_SERVER failed to send private key to CLIENT[1], Error: %d", errno);
-		close(CLIENT[0].sockfd);
-		close(CLIENT[1].sockfd);
+		close(tmpCli[0].sockfd);
+		close(tmpCli[1].sockfd);
 		exit(1);
 	}
 	printf("\n>> MAIN_SERVER sent 'KEY' to CLIENT[1]");
-	if ((send(CLIENT[1].sockfd, INTPAIR, sizeof(int) * 2, 0)) < 0) {
+	if ((send(tmpCli[1].sockfd, INTPAIR, sizeof(int) * 2, 0)) < 0) {
 		printf("\n Failed to send public key pair to CLIENT[1], Error: %d", errno);
-		close(CLIENT[0].sockfd);
-		close(CLIENT[1].sockfd);
+		close(tmpCli[0].sockfd);
+		close(tmpCli[1].sockfd);
 		exit(1);
 	}
 	printf("\n>> Sent public key pair to CLIENT[1]");
@@ -237,17 +263,17 @@ void* handleClients(void* sockNum) {
 	****************************************************/
 	char tmpHostName[50];
 	char tmpAddressName[50];
-	getnameinfo((sockaddr*)&CLIENT[0].protocols, sizeof(sockaddr), tmpHostName, 50, tmpAddressName, 50, 0);
+	getnameinfo((sockaddr*)&tmpCli[0].protocols, sizeof(sockaddr), tmpHostName, 50, tmpAddressName, 50, 0);
 	printf("\n\n>> Obtained CLIENT[0] info: \n\tHostname: %s\n\tAddressName: %s", tmpHostName, tmpAddressName);
 	char tmpHostName2[50];
 	char tmpAddressName2[50];
-	getnameinfo((sockaddr*)&CLIENT[1].protocols, sizeof(sockaddr), tmpHostName2, 50, tmpAddressName2, 50, 0);
-	printf("\n\n>> Obtained CLIENT[0] info: \n\tHostname: %s\n\tAddressName: %s", tmpHostName2, tmpAddressName2);
+	getnameinfo((sockaddr*)&tmpCli[1].protocols, sizeof(sockaddr), tmpHostName2, 50, tmpAddressName2, 50, 0);
+	printf("\n\n>> Obtained CLIENT[1] info: \n\tHostname: %s\n\tAddressName: %s", tmpHostName2, tmpAddressName2);
 
-	if ((send(CLIENT[1].sockfd, &CLIENT[0].protocols, sizeof(sockaddr), 0)) < 0) {
+	if ((send(tmpCli[1].sockfd, &tmpCli[0].protocols, sizeof(sockaddr), 0)) < 0) {
 		printf("\nMAIN_SERVER failed to send CLIENT[1] protocols for CLIENT[0]");
-		close(CLIENT[0].sockfd);
-		close(CLIENT[1].sockfd);
+		close(tmpCli[0].sockfd);
+		close(tmpCli[1].sockfd);
 		exit(1);
 	}
 	printf("\n\n>> Sent CLIENT[0] protocols to CLIENT[1]");
@@ -261,10 +287,10 @@ void* handleClients(void* sockNum) {
 
 	// THESE INTS ARE NOT THE PROPER VALUES, THIS IS ONLY FOR TESTING
 	INTPAIR[0] = 44; INTPAIR[1] = 78;
-	if ((send(CLIENT[0].sockfd, INTPAIR, sizeof(int) * 2, 0)) < 0) {
+	if ((send(tmpCli[0].sockfd, INTPAIR, sizeof(int) * 2, 0)) < 0) {
 		printf("\n>> Failed to send private key to CLIENT[0], Error: %d", errno);
-		close(CLIENT[0].sockfd);
-		close(CLIENT[1].sockfd);
+		close(tmpCli[0].sockfd);
+		close(tmpCli[1].sockfd);
 		exit(1);
 	}
 	printf("\n>> Sent private key to CLIENT[0]");
@@ -272,19 +298,19 @@ void* handleClients(void* sockNum) {
 	 follow up message with another message containing
 	 CLIENT[0].protocols, so CLIENT[1] can connect
 	*******************************************************/
-	if ((send(CLIENT[0].sockfd, &CLIENT[1].protocols, sizeof(sockaddr), 0)) < 0) {
+	if ((send(tmpCli[0].sockfd, &tmpCli[1].protocols, sizeof(sockaddr), 0)) < 0) {
 		printf("\nMAIN_SERVER failed to send CLIENT[1] protocols for CLIENT[0]");
-		close(CLIENT[0].sockfd);
-		close(CLIENT[1].sockfd);
+		close(tmpCli[0].sockfd);
+		close(tmpCli[1].sockfd);
 		exit(1);
 	}
 	
 	printf("\n>> Closing connection with CLIENT[0]");
-	close(CLIENT[0].sockfd);
-	memset(&CLIENT[0], 0, sizeof(CLIENT[0]));
+	close(tmpCli[0].sockfd);
 	printf("\n>> Closing connection with CLIENT[1]");
-	close(CLIENT[1].sockfd);
-	memset(&CLIENT[1], 0, sizeof(CLIENT[1]));
+	close(tmpCli[1].sockfd);
+	free(tmpCli);
+	printf("\n>> Freeing Client memory");
 
 	//pthread_mutex_unlock(&RECEIVE_MUTEX);
 	
